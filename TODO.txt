@@ -1,4 +1,4 @@
-* Upload project documentation.
 * Baseline implementation.
+* Project documentation.
 * Regression tests.
 * Profiling.
