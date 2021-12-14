@@ -10,8 +10,8 @@ import numpy as np
 from rcc import BatchXCorr
 import xcorr_util as xcu
 
-export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-plot_input_data = False
+export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+plot_input_data = True
 plot_statistics = True
 normalize_inputs = False
 use_gpu = True
@@ -39,6 +39,7 @@ for f in os.listdir(export_xcorr_comps_path):
         templ_id = int(templ_match.group(1))
         templates[templ_id] = tifffile.imread(os.path.join(export_xcorr_comps_path, f))
 
+print(f'[BATCH_XCORR] Using GPU: {use_gpu}')
 print(f'[BATCH_XCORR] Total read images: {len(images)}')
 print(f'[BATCH_XCORR] Total read templates: {len(templates)}')
 
