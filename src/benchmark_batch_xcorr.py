@@ -61,7 +61,6 @@ perfplot.live(
     logx=False,  # set to True or False to force scaling
     # logy="auto",
     equality_check=None,
-    #equality_check=xcu.check_xcorr_results_equality,
     # equality_check=np.allclose,  # set to None to disable "correctness" assertion
     # show_progress=True,
     # target_time_per_measurement=1.0,
