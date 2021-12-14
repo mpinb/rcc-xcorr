@@ -7,11 +7,11 @@ import re
 
 import numpy as np
 import perfplot
-import xcorr_util as xcu
 
 from rcc import BatchXCorr
 
 
+benchmark_plot_filename = 'benchmark_xcorr.png'
 export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
 normalize_inputs = False
 
@@ -42,8 +42,8 @@ print(f'[BATCH_XCORR] Total read images: {len(images)}')
 print(f'[BATCH_XCORR] Total read templates: {len(templates)}')
 
 print(f'[BATCH_XCORR] benchmarking cpu/gpu correlation kernels.')
-#correlations_size = len(correlations)
-correlations_size = 100
+correlations_size = len(correlations)
+#correlations_size = 20
 print(f'[BATCH_XCORR] sample_correlations_size: {correlations_size}')
 print(f'[BATCH_XCORR] n_range: {np.linspace(10, correlations_size, num=10, dtype=int).tolist()}')
 
@@ -51,7 +51,7 @@ perfplot.live(
     setup= lambda n: correlations[np.random.choice(correlations_size, size=n, replace=True)],
     kernels=[
         lambda correlations_sample: BatchXCorr.BatchXCorr(images, templates, correlations_sample, use_gpu=False).perform_correlations(),
-        lambda correlations_sample: BatchXCorr.BatchXCorr(images, templates, correlations_sample, use_gpu=False).perform_correlations()
+        lambda correlations_sample: BatchXCorr.BatchXCorr(images, templates, correlations_sample, use_gpu=True).perform_correlations()
     ],
     labels=["XCorrCPU", "XCorrGPU"],
     #n_range=[2 ** k for k in range(1,11)],
