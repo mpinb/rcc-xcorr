@@ -11,9 +11,10 @@ from rcc import BatchXCorr
 import xcorr_util as xcu
 
 export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-plot_input_data = True
-plot_statistics = True
+plot_input_data = False
+plot_statistics = False
 normalize_inputs = False
+group_correlations = True
 use_gpu = True
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
@@ -40,6 +41,7 @@ for f in os.listdir(export_xcorr_comps_path):
         templates[templ_id] = tifffile.imread(os.path.join(export_xcorr_comps_path, f))
 
 print(f'[BATCH_XCORR] Using GPU: {use_gpu}')
+print(f'[BATCH_XCORR] Grouping correlations (2D alignment): {group_correlations}')
 print(f'[BATCH_XCORR] Total read images: {len(images)}')
 print(f'[BATCH_XCORR] Total read templates: {len(templates)}')
 
@@ -56,7 +58,12 @@ start_time = time.time()
 #sample_correlations = 5
 sample_correlations = len(correlations)
 batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_correlations], use_gpu=use_gpu)
-result_coords, result_peaks = batch_correlations.perform_correlations()
+
+if group_correlations:
+    result_coords, result_peaks = batch_correlations.perform_group_correlations()
+else:
+    result_coords, result_peaks = batch_correlations.perform_correlations()
+
 stop_time = time.time()
 print(f"[BATCH_XCORR] elapsed time: {stop_time - start_time} seconds")
 

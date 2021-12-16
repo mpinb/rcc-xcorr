@@ -50,10 +50,15 @@ print(f'[BATCH_XCORR] n_range: {np.linspace(10, correlations_size, num=10, dtype
 perfplot.live(
     setup= lambda n: correlations[np.random.choice(correlations_size, size=n, replace=True)],
     kernels=[
-        lambda correlations_sample: BatchXCorr.BatchXCorr(images, templates, correlations_sample, use_gpu=False).perform_correlations(),
-        lambda correlations_sample: BatchXCorr.BatchXCorr(images, templates, correlations_sample, use_gpu=True).perform_correlations()
+        #lambda correlations_sample: BatchXCorr.BatchXCorr(images, templates, correlations_sample,
+        #                                                  use_gpu=False).perform_correlations(),
+        lambda correlations_sample: BatchXCorr.BatchXCorr(images, templates, correlations_sample,
+                                                          use_gpu=True).perform_correlations(),
+        lambda correlations_sample: BatchXCorr.BatchXCorr(images, templates, correlations_sample,
+                                                          use_gpu=True).perform_group_correlations()
     ],
-    labels=["XCorrCPU", "XCorrGPU"],
+    #labels=["XCorrCPU", "XCorrGPU", "XCorrGPU(group)"],
+    labels=["XCorrGPU", "XCorrGPU(group)"],
     #n_range=[2 ** k for k in range(1,11)],
     n_range=np.linspace(10, correlations_size, num=10, dtype=int).tolist(), # use 20 sample points
     xlabel="len(correlations_sample)",

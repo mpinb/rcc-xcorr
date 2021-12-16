@@ -2,3 +2,7 @@
 * Project documentation.
 * Regression tests.
 * Profiling.
+
+* Reordering the images from the correlations.
+* Caching.
+* Adding the profiling.
