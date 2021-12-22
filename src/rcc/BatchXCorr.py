@@ -5,6 +5,16 @@ import cupy as cp
 
 from tqdm import tqdm
 
+
+# The index_correlations method prepends a correlation list
+# with an extra column that is used to identify each correlation
+def index_correlations(correlations):
+    num_correlations = correlations.shape[0]
+    corr_index = np.arange(num_correlations).reshape([num_correlations, 1])
+    indexed_correlations = np.concatenate([corr_index, correlations], axis=1)
+    return indexed_correlations
+
+
 # The sorted correlations are prepended with an extra column
 # with the initial order in which the correlations were sent
 def sort_correlations(correlations):
@@ -27,14 +37,15 @@ def group_correlations(sorted_correlations):
     grouped_correlations = np.split(sorted_correlations, np.cumsum(unique_images_frequencies)[:-1])
     return grouped_correlations
 
+# TODO:  A group correlations flag.  Sorting is only needed in the case of group correlations.
+# TODO:  Indexing the correlations is done both for sorted and unsorted correlations.
 
 class BatchXCorr:
 
-    def __init__(self, images, templates, correlations, normalize_output=True, normalize_input=False, use_gpu=True):
+    def __init__(self, images, templates, correlations, normalize_input=False, use_gpu=True):
         self.images = images
         self.templates = templates
         self.correlations = correlations
-        self.normalize_output = normalize_output
         self.normalize_input = normalize_input
         self.use_gpu = use_gpu
 
@@ -47,9 +58,9 @@ class BatchXCorr:
         # TODO: remove unused images & templates if not found in correlations
 
         if self.use_gpu:
-            xcorr = XCorrGpu(True, False)
+            xcorr = XCorrGpu(self.normalize_input)
         else:
-            xcorr = XCorrCpu(True, False)
+            xcorr = XCorrCpu(self.normalize_input)
 
         # The results of correlations are kept in a numpy array internally
         batch_results_coord = np.empty((0, 3), int)
@@ -78,9 +89,9 @@ class BatchXCorr:
         # TODO: remove unused images & templates if not found in correlations
 
         if self.use_gpu:
-            xcorr = XCorrGpu(True, False)
+            xcorr = XCorrGpu(self.normalize_input)
         else:
-            xcorr = XCorrCpu(True, False)
+            xcorr = XCorrCpu(self.normalize_input)
 
         # NOTE: sorting correlations optimize copies of data to gpu
         sorted_correlations = sort_correlations(self.correlations)

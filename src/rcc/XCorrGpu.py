@@ -36,13 +36,12 @@ def _window_sum(image, window_shape):
 # full alignment for the 3D alignment only edges overlap (mode = 'full')
 class XCorrGpu:
 
-    def __init__(self, normalize_output=True, normalize_input=False):
-        self.normalize_output = normalize_output
+    def __init__(self, normalize_input=False):
         self.normalize_input = normalize_input
 
     # XCorrGpu info
     def description(self):
-        return f"[XCorrGpu] normalize_output:{self.normalize_output}"
+        return f"[XCorrGpu] normalize_input:{self.normalize_input}"
 
     """cross correlate template to a 2-D image using fast normalized correlation.
     The output is an array with values between -1.0 and 1.0. The value at a
@@ -74,7 +73,7 @@ class XCorrGpu:
     .. [1] J. P. Lewis, "Fast Normalized Cross-Correlation", Industrial Light
            and Magic.
     """
-    def fast_xcorr(self, image, template, mode='constant', constant_values=0):
+    def norm_xcorr(self, image, template, mode='constant', constant_values=0):
         if image.ndim != 2 or template.ndim != 2:
             raise ValueError("Dimensionality of image and/or template should be 2.")
         #if cp.any(cp.less(image.shape, template.shape)):
@@ -121,7 +120,7 @@ class XCorrGpu:
 
         return response
 
-    def fast_xcorr_array(self, image, template_array, mode='constant', constant_values=0):
+    def norm_xcorr_array(self, image, template_array, mode='constant', constant_values=0):
 
         float_dtype = image.dtype
         image_shape = image.shape
@@ -136,7 +135,6 @@ class XCorrGpu:
 
         if any(template_array[x].shape != template_shape for x in range(template_array_size)):
             raise ValueError("All templates in correlation group should have the same size.")
-
 
         # Padding image
         pad_width = tuple((width, width) for width in template_shape)
@@ -178,8 +176,8 @@ class XCorrGpu:
         [cp.maximum(denominator, 0, out=denominator) for denominator in denominator_list]
         [cp.sqrt(denominator, out=denominator) for denominator in denominator_list]
 
-        # Computing the output (fast cross correlation)
-        response_list = [cp.zeros_like(xcorr, dtype=float_dtype) for xcorr in xcorr_list]
+        # Computing the output (normalized fast cross correlation)
+        norm_xcorr_list = [cp.zeros_like(xcorr, dtype=float_dtype) for xcorr in xcorr_list]
 
         # avoid zero-division
         mask_list = [denominator > cp.finfo(float_dtype).eps for denominator in denominator_list]
@@ -188,12 +186,11 @@ class XCorrGpu:
             mask = mask_list[indx]
             numerator = numerator_list[indx]
             denominator = denominator_list[indx]
-            (response_list[indx])[mask] = numerator[mask] / denominator[mask]
+            (norm_xcorr_list[indx])[mask] = numerator[mask] / denominator[mask]
 
-        return response_list
+        return norm_xcorr_list
 
-    # fast cross-correlation
-    # no preprocessing (mean subtraction , std dev.) (raw)
+    # fast normalized cross-correlation
     def match_template(self, image, template):
 
         image_gpu = cp.asarray(image)
@@ -203,17 +200,15 @@ class XCorrGpu:
             image_gpu -= image_gpu.mean()
             template_gpu -= template_gpu.mean()
 
-        corr = self.fast_xcorr(image_gpu, template_gpu, mode='constant', constant_values=0)
+        norm_xcorr = self.norm_xcorr(image_gpu, template_gpu, mode='constant', constant_values=0)
 
-        #NOTE: argmax returns the first occurence of the maximum value
-        corr_peak = cp.argmax(corr)
-        y, x = cp.unravel_index(corr_peak, corr.shape)  # (correlation peak coordinates)
+        # NOTE: argmax returns the first occurrence of the maximum value
+        xcorr_peak = cp.argmax(norm_xcorr)
+        y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
 
-        #print(f"Correlation type: {corr.dtype}  with {np.argmax(corr)} and {corr[y,x]}")
-        return y.get(), x.get(), corr[y,x].get()
+        return y.get(), x.get(), norm_xcorr[y,x].get()
 
-    # fast cross-correlation
-    # no preprocessing (mean subtraction , std dev.) (raw)
+    # fast normalized cross-correlation
     def match_template_array(self, image, template_list, corr_list):
 
         num_templates = len(template_list)
@@ -231,19 +226,18 @@ class XCorrGpu:
 
             templates_array.append(template_gpu)
 
-        fast_xcorr_list = self.fast_xcorr_array(image_gpu, templates_array, mode='constant', constant_values=0)
+        norm_xcorr_list = self.norm_xcorr_array(image_gpu, templates_array, mode='constant', constant_values=0)
 
         match_results_coord = np.empty((0, 3), int)
         match_results_peak = np.empty((0, 2), float)
 
         for indx in range(num_templates):
-            corr = fast_xcorr_list[indx]
-            #NOTE: argmax returns the first occurence of the maximum value
-            corr_peak = cp.argmax(corr)
-            y, x = cp.unravel_index(corr_peak, corr.shape)  # (correlation peak coordinates)
-            #print(f"Correlation type: {corr.dtype}  with {np.argmax(corr)} and {corr[y,x]}")
+            norm_xcorr = norm_xcorr_list[indx]
+            # NOTE: argmax returns the first occurrence of the maximum value
+            xcorr_peak = cp.argmax(norm_xcorr)
+            y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
             match_result_coord = np.array([[corr_list[indx], y.get(), x.get()]])
-            match_result_peak = np.array([[corr_list[indx], corr[y,x].get()]])
+            match_result_peak = np.array([[corr_list[indx], norm_xcorr[y,x].get()]])
             match_results_coord = np.append(match_results_coord, match_result_coord, axis=0)
             match_results_peak = np.append(match_results_peak, match_result_peak, axis=0)
 
