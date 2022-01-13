@@ -30,8 +30,6 @@ def _window_sum(image, window_shape):
 
     return window_sum
 
-# TODO: XCorrCpu add support for the fast_xcorr_array  and match_template_array methods
-
 
 # no preprocessing (mean subtraction , std dev.) (raw)
 # full alignment for the 3D alignment only edges overlap (mode = 'full')

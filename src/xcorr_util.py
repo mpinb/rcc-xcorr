@@ -1,4 +1,8 @@
+import os
+import re
+import tifffile
 import numpy as np
+import multiprocessing as mp
 from matplotlib import pyplot as plt
 
 
@@ -45,6 +49,27 @@ def plot_statistics(images, templates, correlations, sample_size):
     plt.xlabel('template id')
 
     plt.show()
+
+# return a dictionary of files matching filename regex pattern
+# the regex also defines the key to use for the dictionary
+# The filename_regex has the form: r'FILE_PREFIX(FILE_KEY)\.EXT'
+# Example:  r'image([0-9]+)\.tif'
+def search_files(file_path, filename_regex):
+    files = {}
+    for f in os.listdir(file_path):
+        file_match = re.match(filename_regex, f)
+        if file_match:
+            file_id = int(file_match.group(1))
+            file_name = os.path.join(file_path, f)
+            files[file_id] = file_name
+    return files
+
+
+def read_files_parallel(files, num_procs=mp.cpu_count()):
+    with mp.Pool(num_procs) as pool:
+        return {file_id:file_data for file_id, file_data in
+                zip(files.keys(),
+                    pool.map(tifffile.imread, files.values()))}
 
 #def check_xcorr_results_equality(xcorr_results_gpu, xcorr_results_cpu):
 #    print(f'[XCU_UTIL] xcorr_results: {xcorr_results_gpu}')
