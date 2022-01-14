@@ -31,12 +31,14 @@ templ_files = xcu.search_files(export_xcorr_comps_path, r'templ([0-9]+)\.tif')
 
 # NOTE: Using dictionaries for testing. The final version will support a numpy array
 # images = np.empty(NUM_IMAGES)
-print(f'[BATCH_XCORR] Reading files using process pool of size: {mp.cpu_count()}')
 start_time = time.time()
-images = xcu.read_files_parallel(image_files)
-templates = xcu.read_files_parallel(templ_files)
+print(f'[BATCH_XCORR] Thread pool size: {mp.cpu_count()}')
+print(f'[BATCH_XCORR] Loading {len(image_files)} images.')
+images = xcu.read_files_parallel_progress(image_files)
+print(f'[BATCH_XCORR] Loading {len(templ_files)} templates.')
+templates = xcu.read_files_parallel_progress(templ_files)
 stop_time = time.time()
-print(f'[BATCH_XCORR] Elapsed time reading files: {stop_time - start_time} seconds')
+print(f'[BATCH_XCORR] Loading completed in {stop_time - start_time} seconds')
 
 # Sampling memory use. (maximum resident set size in kilobytes)
 usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
@@ -44,8 +46,6 @@ print(f'[BATCH_XCORR] Current memory usage is {usage / 10 ** 3} MB')
 
 print(f'[BATCH_XCORR] Using GPU: {use_gpu}')
 print(f'[BATCH_XCORR] Grouping correlations (2D alignment): {group_correlations}')
-print(f'[BATCH_XCORR] Total read images: {len(images)}')
-print(f'[BATCH_XCORR] Total read templates: {len(templates)}')
 
 #if plot_statistics:
 #    plot_sample_size = len(correlations)

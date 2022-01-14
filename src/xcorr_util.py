@@ -1,9 +1,12 @@
 import os
 import re
+import tqdm
 import tifffile
 import numpy as np
 import multiprocessing as mp
+import concurrent.futures as cf
 from matplotlib import pyplot as plt
+from multiprocessing.pool import ThreadPool
 
 
 def plot_input_data(images, templates, correlations, sample_size):
@@ -50,6 +53,7 @@ def plot_statistics(images, templates, correlations, sample_size):
 
     plt.show()
 
+
 # return a dictionary of files matching filename regex pattern
 # the regex also defines the key to use for the dictionary
 # The filename_regex has the form: r'FILE_PREFIX(FILE_KEY)\.EXT'
@@ -65,13 +69,18 @@ def search_files(file_path, filename_regex):
     return files
 
 
+# This operation is IO bound therefore using a ThreadPool executor
 def read_files_parallel(files, num_procs=mp.cpu_count()):
-    with mp.Pool(num_procs) as pool:
+    with cf.ThreadPoolExecutor(num_procs) as pool:
         return {file_id:file_data for file_id, file_data in
                 zip(files.keys(),
                     pool.map(tifffile.imread, files.values()))}
 
-#def check_xcorr_results_equality(xcorr_results_gpu, xcorr_results_cpu):
-#    print(f'[XCU_UTIL] xcorr_results: {xcorr_results_gpu}')
-    #result_coords, result_peaks
-#    return True
+
+# This one works exactly the same as read_files_parallel but uses
+# tqdm package to show the progress of the parallel files being read
+def read_files_parallel_progress(files, num_procs=mp.cpu_count()):
+    with ThreadPool(num_procs) as pool:
+        return {file_id:file_data for file_id, file_data in
+                zip(files.keys(),
+                    tqdm.tqdm(pool.imap(tifffile.imread, files.values()), total=len(files)))}
