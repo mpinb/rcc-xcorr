@@ -71,7 +71,10 @@ class BatchXCorr:
             correlation = sorted_correlations[indx]
             corr_id, image_id, templ_id = correlation
             #print(f"perform correlation: {corr_id} image: {image_id} templ: {templ_id}")
-            x, y, peak = xcorr.match_template(self.images[image_id], self.templates[templ_id])
+
+            #x, y, peak = xcorr.match_template(self.images[image_id], self.templates[templ_id])
+            x, y, peak = xcorr.match_template_crop(self.images[image_id], self.templates[templ_id])
+
             corr_result_coord = np.array([[corr_id, x, y]])
             corr_result_peak = np.array([[corr_id, peak]])
             batch_results_coord = np.append(batch_results_coord, corr_result_coord, axis=0)

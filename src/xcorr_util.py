@@ -9,6 +9,16 @@ from matplotlib import pyplot as plt
 from multiprocessing.pool import ThreadPool
 
 
+def sampled_correlations_input(correlations, sample_size):
+    image_set = set()
+    template_set = set()
+    for correlation in correlations[:sample_size]:
+        image_id, templ_id = correlation
+        image_set.add(image_id)
+        template_set.add(templ_id)
+    return image_set, template_set
+
+
 def plot_input_data(images, templates, correlations, sample_size):
     total_correlations = correlations.shape[0]
     for c in range(min(sample_size, total_correlations)):
@@ -68,7 +78,8 @@ def search_files(file_path, filename_regex):
             files[file_id] = file_name
     return files
 
-
+#import psutil
+#psutil.cpu_count(logical = True)
 # This operation is IO bound therefore using a ThreadPool executor
 def read_files_parallel(files, num_procs=mp.cpu_count()):
     with cf.ThreadPoolExecutor(num_procs) as pool:
