@@ -209,26 +209,27 @@ class XCorrGpu:
         return y.get(), x.get(), norm_xcorr[y,x].get()
 
     # fast normalized cross-correlation
-    def match_template_crop(self, image, template, crop=(221, 221)):
+    def match_template_crop(self, image, template, crop=(221, 221), cuda_device=0):
 
-        image_gpu = cp.asarray(image)
-        template_gpu = cp.asarray(template)
+        with cp.cuda.Device(cuda_device):
+            image_gpu = cp.asarray(image)
+            template_gpu = cp.asarray(template)
 
-        if self.normalize_input:
-            image_gpu -= image_gpu.mean()
-            template_gpu -= template_gpu.mean()
+            if self.normalize_input:
+                image_gpu -= image_gpu.mean()
+                template_gpu -= template_gpu.mean()
 
-        norm_xcorr = self.norm_xcorr(image_gpu, template_gpu, mode='constant', constant_values=0)
+            norm_xcorr = self.norm_xcorr(image_gpu, template_gpu, mode='constant', constant_values=0)
 
-        # cropping the norm_xcorr
-        cropy, cropx = crop
-        norm_xcorr = norm_xcorr[cropy:-cropy,cropx:-cropx]
+            # cropping the norm_xcorr
+            cropy, cropx = crop
+            norm_xcorr = norm_xcorr[cropy:-cropy,cropx:-cropx]
 
-        # NOTE: argmax returns the first occurrence of the maximum value
-        xcorr_peak = cp.argmax(norm_xcorr)
-        y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
+            # NOTE: argmax returns the first occurrence of the maximum value
+            xcorr_peak = cp.argmax(norm_xcorr)
+            y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
 
-        return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
+            return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
 
 
 

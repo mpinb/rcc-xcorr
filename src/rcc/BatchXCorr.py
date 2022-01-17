@@ -73,7 +73,8 @@ class BatchXCorr:
             #print(f"perform correlation: {corr_id} image: {image_id} templ: {templ_id}")
 
             #x, y, peak = xcorr.match_template(self.images[image_id], self.templates[templ_id])
-            x, y, peak = xcorr.match_template_crop(self.images[image_id], self.templates[templ_id])
+            cuda_device = indx % 4
+            x, y, peak = xcorr.match_template_crop(self.images[image_id], self.templates[templ_id], cuda_device=cuda_device)
 
             corr_result_coord = np.array([[corr_id, x, y]])
             corr_result_peak = np.array([[corr_id, peak]])
