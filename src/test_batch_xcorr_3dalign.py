@@ -9,15 +9,15 @@ import multiprocessing as mp
 from rcc import BatchXCorr
 import xcorr_util as xcu
 
-export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
+#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
 #export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-#export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
+export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
 plot_input_data = False
 plot_statistics = False
 normalize_inputs = False
 group_correlations = False
-limit_input_size = True
-max_sample_size = 200 # this value is used when the limit input size flag is True
+limit_input_size = False
+max_sample_size = 1500 # this value is used when the limit input size flag is True
 use_gpu = True
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')

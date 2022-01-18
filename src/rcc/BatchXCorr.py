@@ -61,10 +61,11 @@ class BatchXCorr:
 
         futures = []
         with tqdm(total=len(self.correlations), delay=1) as progress:
-            with cf.ThreadPoolExecutor(max_workers=4) as pool:
-                for correlation in self.correlations:
+            with cf.ThreadPoolExecutor(max_workers=20) as pool:
+                for count, correlation in enumerate(self.correlations):
+                    cuda_device = count%4;
                     image_id, templ_id = correlation
-                    future = pool.submit(xcorr.match_template_crop, self.images[image_id], self.templates[templ_id])
+                    future = pool.submit(xcorr.match_template_crop, self.images[image_id], self.templates[templ_id], (221, 221), cuda_device)
                     future.add_done_callback(lambda p: progress.update(1))
                     futures.append(future)
 
