@@ -1,9 +1,12 @@
+import concurrent.futures as cf
+from multiprocessing.pool import ThreadPool
+
 from .XCorrCpu import XCorrCpu
 from .XCorrGpu import XCorrGpu
 import numpy as np
 import cupy as cp
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 
 # The index_correlations method prepends a correlation list
@@ -51,42 +54,33 @@ class BatchXCorr:
 
     def perform_correlations(self):
 
-        # NOTE: sorting correlations optimize copies of data to gpu
-        sorted_correlations = sort_correlations(self.correlations)
-        #print(sorted_correlations)
-
-        # TODO: remove unused images & templates if not found in correlations
-
         if self.use_gpu:
             xcorr = XCorrGpu(self.normalize_input)
         else:
             xcorr = XCorrCpu(self.normalize_input)
 
+        futures = []
+        with tqdm(total=len(self.correlations), delay=1) as progress:
+            with cf.ThreadPoolExecutor(max_workers=4) as pool:
+                for correlation in self.correlations:
+                    image_id, templ_id = correlation
+                    future = pool.submit(xcorr.match_template_crop, self.images[image_id], self.templates[templ_id])
+                    future.add_done_callback(lambda p: progress.update(1))
+                    futures.append(future)
+
         # The results of correlations are kept in a numpy array internally
-        batch_results_coord = np.empty((0, 3), int)
-        batch_results_peak = np.empty((0, 2), float)
+        batch_results_coord = np.empty((0, 2), int)
+        batch_results_peak = np.empty((0, 1), float)
 
-        num_correlations = len(sorted_correlations)
-        for indx in tqdm(range(num_correlations)):
-            correlation = sorted_correlations[indx]
-            corr_id, image_id, templ_id = correlation
-            #print(f"perform correlation: {corr_id} image: {image_id} templ: {templ_id}")
-
-            #x, y, peak = xcorr.match_template(self.images[image_id], self.templates[templ_id])
-            cuda_device = indx % 4
-            x, y, peak = xcorr.match_template_crop(self.images[image_id], self.templates[templ_id], cuda_device=cuda_device)
-
-            corr_result_coord = np.array([[corr_id, x, y]])
-            corr_result_peak = np.array([[corr_id, peak]])
+        for future in futures:
+            x, y, peak = future.result()
+            #print(f'x: {x} y: {y} peak: {peak}')
+            corr_result_coord = np.array([[x, y]])
+            corr_result_peak = np.array([[peak]])
             batch_results_coord = np.append(batch_results_coord, corr_result_coord, axis=0)
             batch_results_peak = np.append(batch_results_peak, corr_result_peak, axis=0)
 
-        corr_id_col = 0  # sorting batch correlation results by correlation id
-        batch_results_coord = batch_results_coord[np.argsort(batch_results_coord[:, corr_id_col])]
-        batch_results_peak = batch_results_peak[np.argsort(batch_results_peak[:, corr_id_col])]
-
-        # remove the correlation id column from batch results
-        return batch_results_coord[:,1:], batch_results_peak[:, 1:] # removing the correlation_id column
+        return batch_results_coord, batch_results_peak
 
     def perform_group_correlations(self):
 

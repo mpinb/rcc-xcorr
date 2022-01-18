@@ -1,10 +1,11 @@
 import os
 import re
-import tqdm
 import tifffile
 import numpy as np
 import multiprocessing as mp
 import concurrent.futures as cf
+
+from tqdm.auto import tqdm
 from matplotlib import pyplot as plt
 from multiprocessing.pool import ThreadPool
 
@@ -90,8 +91,14 @@ def read_files_parallel(files, num_procs=mp.cpu_count()):
 
 # This one works exactly the same as read_files_parallel but uses
 # tqdm package to show the progress of the parallel files being read
-def read_files_parallel_progress(files, num_procs=mp.cpu_count()):
-    with ThreadPool(num_procs) as pool:
-        return {file_id:file_data for file_id, file_data in
-                zip(files.keys(),
-                    tqdm.tqdm(pool.imap(tifffile.imread, files.values()), total=len(files)))}
+def read_files_parallel_progress(files, num_procs=4):
+    futures = []
+    with tqdm(total=len(files), position=0, leave=True, delay=2) as progress:
+        with cf.ThreadPoolExecutor(max_workers=num_procs) as pool:
+            for file_id in files.keys():
+                future = pool.submit(tifffile.imread, files[file_id])
+                future.add_done_callback(lambda p: progress.update(1))
+                futures.append(future)
+
+    return {file_id: future.result() for file_id, future in
+            zip(files.keys(), futures)}
