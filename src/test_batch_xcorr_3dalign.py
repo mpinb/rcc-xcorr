@@ -10,14 +10,16 @@ from rcc import BatchXCorr
 import xcorr_util as xcu
 
 #export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
-#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
+export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+#export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
 plot_input_data = False
 plot_statistics = False
 normalize_inputs = False
 group_correlations = False
-limit_input_size = False
-max_sample_size = 1500 # this value is used when the limit input size flag is True
+limit_input_size = True
+max_sample_size = 200 # value used when the limit input size flag is True
+skip_correlations = True
+num_skip_correlations = 0 # value used when skip correlations flag is True
 use_gpu = True
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
@@ -26,6 +28,14 @@ with open(fn, 'rb') as f: d = dill.load(f)
 correlations = d['comps']
 Cmax_test = d['Cmax']
 Camax_test = d['Camax']
+
+print(f'[BATCH_XCORR] Total correlations: {len(correlations)}')
+
+if skip_correlations:
+    correlations = correlations[num_skip_correlations:]
+    Cmax_test = Cmax_test[num_skip_correlations:]
+    Camax_test = Camax_test[num_skip_correlations:]
+    print(f'[BATCH_XCORR] Skipping first {num_skip_correlations}. Remaining correlations: {len(correlations)}')
 
 # Gathering the file names of images and templates
 image_files = xcu.search_files(export_xcorr_comps_path, r'image([0-9]+)\.tif')
@@ -96,3 +106,15 @@ print(f"Peak values match: {np.allclose(np.transpose(result_peaks), Cmax_test[:s
 
 #print(result_coords)
 #print(Camax_test[:sample_size])
+
+for correlation, \
+    test_peak, test_coord, \
+    result_peak, result_coord \
+        in zip( correlations[:sample_size],
+                  Cmax_test[:sample_size],
+                  Camax_test[:sample_size],
+                  result_peaks,
+                  result_coords):
+    #print(f'max test: {test_peak} test coord: {test_coord}')
+    if not(np.allclose(result_coord, test_coord) and np.isclose(result_peak, test_peak, atol=1e-6)):
+        xcu.plot_xcorr(correlation, images, templates, test_peak, test_coord)

@@ -1,9 +1,13 @@
 import os
 import re
 import tifffile
+import cupy as cp
 import numpy as np
 import multiprocessing as mp
 import concurrent.futures as cf
+
+from rcc.XCorrCpu import XCorrCpu
+from rcc.XCorrGpu import XCorrGpu
 
 from tqdm.auto import tqdm
 from matplotlib import pyplot as plt
@@ -34,6 +38,39 @@ def plot_input_data(images, templates, correlations, sample_size):
         plt.title('template')
         plt.imshow(templates[templ_id], cmap='gray')
         plt.show()
+
+
+def plot_xcorr(correlation, images, templates, expected_max, expected_max_coord):
+    print(f'correlation: {correlation}')
+    image_id, templ_id = correlation
+    print(f'Plotting correlation between image: {image_id} and template: {templ_id}')
+    image = images[image_id]
+    template = templates[templ_id]
+    xcorr_cpu = XCorrCpu(cache_correlation=True)
+    xcorr_gpu = XCorrGpu(cache_correlation=True)
+    xm_cpu, ym_cpu, max_cpu = xcorr_cpu.match_template(image, template)
+    xm_gpu, ym_gpu, max_gpu = xcorr_gpu.match_template_crop(image, template)
+    correlation_cpu = xcorr_cpu.get_correlation()
+    correlation_gpu = cp.asnumpy(xcorr_gpu.get_correlation())
+    print(f'Image shape: {image.shape} Correlation shape: {correlation_cpu.shape}')
+    f, axes = plt.subplots(2, 2)
+    f.suptitle(f'Expected Correlation max: {expected_max:.6f} (x,y): {expected_max_coord}', y=0.04)
+    axes[0,0].set_title(f'Image\nid: {image_id}')
+    axes[0,0].imshow(image, cmap='gray')
+    axes[0,0].plot(expected_max_coord[0], expected_max_coord[1],
+             color='green', marker='o', markersize=12, fillstyle='none', linewidth=2)
+    axes[0,1].set_title(f'Template\nid: {templ_id}')
+    axes[0,1].imshow(template, cmap='gray')
+    axes[1,0].set_title(f'XCorr CPU\nmax: {max_cpu:.6f}\n(x,y):({xm_cpu},{ym_cpu})')
+    axes[1,0].imshow(correlation_cpu, cmap='gray')
+    axes[1,0].plot(xm_cpu, ym_cpu,
+             color='green', marker='o', markersize=12, fillstyle='none', linewidth=2)
+    axes[1,1].set_title(f'XCorr GPU\nmax: {max_gpu:.6f}\n(x,y):({xm_gpu},{ym_gpu})')
+    axes[1,1].imshow(correlation_gpu, cmap='gray')
+    axes[1,1].plot(xm_gpu, ym_gpu,
+             color='green', marker='o', markersize=12, fillstyle='none', linewidth=2)
+    plt.subplots_adjust(wspace=0.4, hspace=0.8)
+    plt.show()
 
 
 # Plot correlations statistics using a cumulative histogram

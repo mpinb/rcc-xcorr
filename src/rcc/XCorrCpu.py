@@ -35,12 +35,20 @@ def _window_sum(image, window_shape):
 # full alignment for the 3D alignment only edges overlap (mode = 'full')
 class XCorrCpu:
 
-    def __init__(self, normalize_input=False):
+    def __init__(self, crop_output=(0, 0), normalize_input=False, cache_correlation=False):
+        self.correlation = None
+        self.crop_output = crop_output
         self.normalize_input = normalize_input
+        self.cache_correlation = cache_correlation
 
     # XCorrCpu info
     def description(self):
         return f"[XCorrCpu] normalize_input:{self.normalize_input}"
+
+    # Return the previously computed correlation
+    # if the cache_correlation flag is True
+    def get_correlation(self):
+        return self.correlation if self.cache_correlation else None
 
     """cross correlate template to a 2-D image using fast normalized correlation.
     The output is an array with values between -1.0 and 1.0. The value at a
@@ -190,13 +198,22 @@ class XCorrCpu:
         return norm_xcorr_list
 
     # fast normalized cross-correlation
-    def match_template(self, image, template):
+    def match_template(self, image, template, correlation_num):
 
         if self.normalize_input:
             image -= image.mean()
             template -= template.mean()
 
         norm_xcorr = self.norm_xcorr(image, template, mode='constant', constant_values=0)
+
+        # cropping the norm_xcorr
+        cropy, cropx = self.crop_output
+        origy, origx = norm_xcorr.shape
+        norm_xcorr = norm_xcorr[cropy:origy - cropy, cropx:origx - cropx]
+
+        # cache correlation
+        if self.cache_correlation:
+            self.correlation = norm_xcorr
 
         # NOTE: argmax returns the first occurrence of the maximum value
         xcorr_peak = np.argmax(norm_xcorr)
@@ -205,7 +222,7 @@ class XCorrCpu:
         return y, x, norm_xcorr[y,x]
 
     # fast normalized cross-correlation
-    def match_template_array(self, image, template_list, corr_list):
+    def match_template_array(self, image, template_list, corr_list, corr_list_num):
 
         num_templates = len(template_list)
 
@@ -222,6 +239,15 @@ class XCorrCpu:
             templates_array.append(template)
 
         norm_xcorr_list = self.norm_xcorr_array(image, templates_array, mode='constant', constant_values=0)
+
+        # cropping the correlations
+        cropy, cropx = self.crop_output
+        origy, origx = norm_xcorr_list[0].shape
+        norm_xcorr_list = [norm_xcorr[cropy:origy - cropy, cropx:origx - cropx] for norm_xcorr in norm_xcorr_list]
+
+        # cache correlation
+        if self.cache_correlation:
+            pass  # ignoring this flag for grouped correlations
 
         match_results_coord = np.empty((0, 3), int)
         match_results_peak = np.empty((0, 2), float)

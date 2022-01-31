@@ -55,17 +55,16 @@ class BatchXCorr:
     def perform_correlations(self):
 
         if self.use_gpu:
-            xcorr = XCorrGpu(self.normalize_input)
+            xcorr = XCorrGpu(normalize_input=self.normalize_input)
         else:
-            xcorr = XCorrCpu(self.normalize_input)
+            xcorr = XCorrCpu(normalize_input=self.normalize_input)
 
         futures = []
         with tqdm(total=len(self.correlations), delay=1) as progress:
-            with cf.ThreadPoolExecutor(max_workers=20) as pool:
-                for count, correlation in enumerate(self.correlations):
-                    cuda_device = count%4;
+            with cf.ThreadPoolExecutor(max_workers=4) as pool: # FIXME: dynamically set the amount of workers (can cause out of device memory errors)
+                for corr_num, correlation in enumerate(self.correlations):
                     image_id, templ_id = correlation
-                    future = pool.submit(xcorr.match_template_crop, self.images[image_id], self.templates[templ_id], (221, 221), cuda_device)
+                    future = pool.submit(xcorr.match_template, self.images[image_id], self.templates[templ_id], corr_num)
                     future.add_done_callback(lambda p: progress.update(1))
                     futures.append(future)
 
@@ -75,7 +74,6 @@ class BatchXCorr:
 
         for future in futures:
             x, y, peak = future.result()
-            #print(f'x: {x} y: {y} peak: {peak}')
             corr_result_coord = np.array([[x, y]])
             corr_result_peak = np.array([[peak]])
             batch_results_coord = np.append(batch_results_coord, corr_result_coord, axis=0)
@@ -85,38 +83,40 @@ class BatchXCorr:
 
     def perform_group_correlations(self):
 
-        # TODO: remove unused images & templates if not found in correlations
-
         if self.use_gpu:
-            xcorr = XCorrGpu(self.normalize_input)
+            xcorr = XCorrGpu(normalize_input=self.normalize_input)
         else:
-            xcorr = XCorrCpu(self.normalize_input)
+            xcorr = XCorrCpu(normalize_input=self.normalize_input)
 
         # NOTE: sorting correlations optimize copies of data to gpu
         sorted_correlations = sort_correlations(self.correlations)
         # NOTE: group correlations based on the image column
         grouped_correlations = group_correlations(sorted_correlations)
 
+        futures = []
+        with tqdm(total=len(grouped_correlations), delay=1) as progress:
+            with cf.ThreadPoolExecutor(max_workers=4) as pool: # FIXME: dynamically set the amount of workers
+                for corr_list_num, correlation_group in enumerate(grouped_correlations):
+                    corr_id_array, image_id_array, templ_id_array = np.split(correlation_group, 3, axis=1)
+                    correlations_list = np.array(corr_id_array).flatten()
+                    image_ids = np.array(image_id_array).flatten()
+                    templ_ids = np.array(templ_id_array).flatten()
+                    #Loading group image
+                    group_image_id = image_ids[0]
+                    group_image = self.images[group_image_id]
+                    #Loading templates
+                    templates_list = [self.templates[templ_id] for templ_id in templ_ids]
+                    future = pool.submit(xcorr.match_template_array,
+                                         group_image, templates_list, correlations_list, corr_list_num)
+                    future.add_done_callback(lambda p: progress.update(1))
+                    futures.append(future)
+
         # The results of correlations are kept in a numpy array internally
         batch_results_coord = np.empty((0, 3), int)
         batch_results_peak = np.empty((0, 2), float)
 
-        num_groups = len(grouped_correlations)
-        for indx in tqdm(range(num_groups)):
-            correlation_group = grouped_correlations[indx]
-            corr_id_array, image_id_array, templ_id_array = np.split(correlation_group, 3, axis=1)
-            corr_list = np.array(corr_id_array).flatten()
-            image_list = np.array(image_id_array).flatten()
-            templ_list = np.array(templ_id_array).flatten()
-            #print(f"perform correlation group: {corr_list} image: {image_list} templ: {templ_list}")
-            #Loading group image
-            group_image_id = image_list[0]
-            group_image = self.images[group_image_id]
-            #Loading templates
-            templates = [self.templates[templ_id] for templ_id in templ_list]
-
-            group_coords, group_peaks = xcorr.match_template_array(group_image, templates, corr_list)
-
+        for future in futures:
+            group_coords, group_peaks = future.result()
             batch_results_coord = np.append(batch_results_coord, group_coords, axis=0)
             batch_results_peak = np.append(batch_results_peak, group_peaks, axis=0)
 

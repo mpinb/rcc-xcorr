@@ -10,12 +10,12 @@ import numpy as np
 from rcc import BatchXCorr
 import xcorr_util as xcu
 
-export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
 plot_input_data = False
 plot_statistics = False
 normalize_inputs = False
 group_correlations = False
-use_gpu = True
+use_gpu = False
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
 with open(fn, 'rb') as f: d = dill.load(f)

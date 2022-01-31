@@ -1,5 +1,7 @@
 import math
 
+import GPUtil
+
 import numpy as np
 import cupy as cp
 from cupyx.scipy.signal import fftconvolve
@@ -36,12 +38,24 @@ def _window_sum(image, window_shape):
 # full alignment for the 3D alignment only edges overlap (mode = 'full')
 class XCorrGpu:
 
-    def __init__(self, normalize_input=False):
+    def __init__(self, crop_output=(0, 0), normalize_input=False, cache_correlation=False):
+        self.correlation = None
+        self.crop_output = crop_output
         self.normalize_input = normalize_input
+        self.cache_correlation = cache_correlation
+        # NOTE: gpu util uses nvidia-smi to set the cuda device count
+        self.cuda_devices = GPUtil.getAvailable(order='first', limit=4)
+        self.num_devices = len(self.cuda_devices)
+        print(f'Using {self.num_devices} CUDA devices: {self.cuda_devices} ')
 
     # XCorrGpu info
     def description(self):
         return f"[XCorrGpu] normalize_input:{self.normalize_input}"
+
+    # Return the previously computed correlation
+    # if the cache_correlation flag is True
+    def get_correlation(self):
+        return self.correlation if self.cache_correlation else None
 
     """cross correlate template to a 2-D image using fast normalized correlation.
     The output is an array with values between -1.0 and 1.0. The value at a
@@ -191,26 +205,9 @@ class XCorrGpu:
         return norm_xcorr_list
 
     # fast normalized cross-correlation
-    def match_template(self, image, template):
-
-        image_gpu = cp.asarray(image)
-        template_gpu = cp.asarray(template)
-
-        if self.normalize_input:
-            image_gpu -= image_gpu.mean()
-            template_gpu -= template_gpu.mean()
-
-        norm_xcorr = self.norm_xcorr(image_gpu, template_gpu, mode='constant', constant_values=0)
-
-        # NOTE: argmax returns the first occurrence of the maximum value
-        xcorr_peak = cp.argmax(norm_xcorr)
-        y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
-
-        return y.get(), x.get(), norm_xcorr[y,x].get()
-
-    # fast normalized cross-correlation
-    def match_template_crop(self, image, template, crop=(221, 221), cuda_device=0):
-
+    def match_template(self, image, template, correlation_num):
+        # using correlation_number to assign cuda device (round robin)
+        cuda_device = self.cuda_devices[correlation_num % self.num_devices]
         with cp.cuda.Device(cuda_device):
             image_gpu = cp.asarray(image)
             template_gpu = cp.asarray(template)
@@ -222,8 +219,13 @@ class XCorrGpu:
             norm_xcorr = self.norm_xcorr(image_gpu, template_gpu, mode='constant', constant_values=0)
 
             # cropping the norm_xcorr
-            cropy, cropx = crop
-            norm_xcorr = norm_xcorr[cropy:-cropy,cropx:-cropx]
+            cropy, cropx = self.crop_output
+            origy, origx = norm_xcorr.shape
+            norm_xcorr = norm_xcorr[cropy:origy-cropy,cropx:origx-cropx]
+
+            # cache correlation
+            if self.cache_correlation:
+                self.correlation = norm_xcorr
 
             # NOTE: argmax returns the first occurrence of the maximum value
             xcorr_peak = cp.argmax(norm_xcorr)
@@ -231,39 +233,48 @@ class XCorrGpu:
 
             return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
 
-
-
     # fast normalized cross-correlation
-    def match_template_array(self, image, template_list, corr_list):
-
-        num_templates = len(template_list)
-        image_gpu = cp.asarray(image)
-
-        if self.normalize_input:
-            image_gpu -= image_gpu.mean()
-
-        templates_array = []
-        for indx in range(num_templates):
-            template_gpu = cp.asarray(template_list[indx])
+    def match_template_array(self, image, template_list, corr_list, corr_list_num):
+        # using correlation_list_number to assign cuda device (round robin)
+        cuda_device = self.cuda_devices[corr_list_num % self.num_devices]
+        with cp.cuda.Device(cuda_device):
+            num_templates = len(template_list)
+            image_gpu = cp.asarray(image)
 
             if self.normalize_input:
-                template_gpu -= template_gpu.mean()
+                image_gpu -= image_gpu.mean()
 
-            templates_array.append(template_gpu)
+            templates_array = []
+            for indx in range(num_templates):
+                template_gpu = cp.asarray(template_list[indx])
 
-        norm_xcorr_list = self.norm_xcorr_array(image_gpu, templates_array, mode='constant', constant_values=0)
+                if self.normalize_input:
+                    template_gpu -= template_gpu.mean()
 
-        match_results_coord = np.empty((0, 3), int)
-        match_results_peak = np.empty((0, 2), float)
+                templates_array.append(template_gpu)
 
-        for indx in range(num_templates):
-            norm_xcorr = norm_xcorr_list[indx]
-            # NOTE: argmax returns the first occurrence of the maximum value
-            xcorr_peak = cp.argmax(norm_xcorr)
-            y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
-            match_result_coord = np.array([[corr_list[indx], y.get(), x.get()]])
-            match_result_peak = np.array([[corr_list[indx], norm_xcorr[y,x].get()]])
-            match_results_coord = np.append(match_results_coord, match_result_coord, axis=0)
-            match_results_peak = np.append(match_results_peak, match_result_peak, axis=0)
+            norm_xcorr_list = self.norm_xcorr_array(image_gpu, templates_array, mode='constant', constant_values=0)
 
-        return match_results_coord, match_results_peak
+            # cropping the correlations
+            cropy, cropx = self.crop_output
+            origy, origx = norm_xcorr_list[0].shape
+            norm_xcorr_list = [norm_xcorr[cropy:origy-cropy, cropx:origx-cropx] for norm_xcorr in norm_xcorr_list]
+
+            # cache correlation
+            if self.cache_correlation:
+                pass  # ignoring this flag for grouped correlations
+
+            match_results_coord = np.empty((0, 3), int)
+            match_results_peak = np.empty((0, 2), float)
+
+            for indx in range(num_templates):
+                norm_xcorr = norm_xcorr_list[indx]
+                # NOTE: argmax returns the first occurrence of the maximum value
+                xcorr_peak = cp.argmax(norm_xcorr)
+                y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
+                match_result_coord = np.array([[corr_list[indx], y.get(), x.get()]])
+                match_result_peak = np.array([[corr_list[indx], norm_xcorr[y,x].get()]])
+                match_results_coord = np.append(match_results_coord, match_result_coord, axis=0)
+                match_results_peak = np.append(match_results_peak, match_result_peak, axis=0)
+
+            return match_results_coord, match_results_peak

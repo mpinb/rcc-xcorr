@@ -1,20 +1,25 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open('README.md', 'r') as fh:
     long_description = fh.read()
 
 setup(
     name='rcc-xcorr',  # the name used for pip install
-    version='0.0.1',
+    version='1.0.0',
     description='Perform template matching using fast normalized cross-correlation.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     py_modules=['rcc-xcorr'],  # the name used when importing the package
-    package_dir={'': 'src'},
-    requires= [
+    packages=find_packages(exclude='tests'),
+    #package_dir={'': 'src'},
+    requires=[
         'numpy',
         'scipy'
     ],
+    url="https://github.com/research-center-caesar/rcc-xcorr.git",
+    author="Omar Valerio",
+    author_email="omar.valerio@mpinb.mpg.de",
+    license="MIT",
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
@@ -24,5 +29,4 @@ setup(
         "Environment :: GPU :: NVIDIA CUDA :: 11.0",
         "Topic :: Scientific/Engineering :: Image Processing",
     ],
-    url="https://github.com/research-center-caesar/rcc-xcorr.git",
 )
