@@ -13,8 +13,16 @@ setup(
     packages=find_packages(exclude='tests'),
     #package_dir={'': 'src'},
     requires=[
+        'cupy',
         'numpy',
-        'scipy'
+        'scipy',
+        'tqdm',
+        'GPUtil',
+        # additional libraries used for the test and benchmarking scripts
+        'perfplot',
+        'tifffile',
+        'dill',
+        'matplotlib'
     ],
     url="https://github.com/research-center-caesar/rcc-xcorr.git",
     author="Omar Valerio",
