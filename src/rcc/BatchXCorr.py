@@ -63,7 +63,7 @@ class BatchXCorr:
 
         futures = []
         with tqdm(total=len(self.correlations), delay=1) as progress:
-            with cf.ThreadPoolExecutor(max_workers=4) as pool: # FIXME: dynamically set the amount of workers (can cause out of device memory errors)
+            with cf.ThreadPoolExecutor(max_workers=12) as pool: # TODO: dynamically set the amount of workers
                 for corr_num, correlation in enumerate(self.correlations):
                     image_id, templ_id = correlation
                     future = pool.submit(xcorr.match_template, self.images[image_id], self.templates[templ_id], corr_num)

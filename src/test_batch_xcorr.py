@@ -17,7 +17,7 @@ plot_input_data = False
 plot_statistics = False
 normalize_inputs = False
 group_correlations = False
-use_gpu = False
+use_gpu = True
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
 with open(fn, 'rb') as f: d = dill.load(f)

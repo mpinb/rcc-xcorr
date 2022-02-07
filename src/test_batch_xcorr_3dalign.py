@@ -16,13 +16,13 @@ plot_input_data = False
 plot_statistics = False
 normalize_inputs = False
 group_correlations = False
-limit_input_size = False
-max_sample_size = 400 # value used when the limit input size flag is True
+limit_input_size = True
+max_sample_size = 200 # value used when the limit input size flag is True
 skip_correlations = True
 num_skip_correlations = 0 # value used when skip correlations flag is True
 crop_output = (221, 221) # use for the 3d align case
 #crop_output = (0, 0) # use for the 2d align case
-use_gpu = True
+use_gpu = False
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
 with open(fn, 'rb') as f: d = dill.load(f)
