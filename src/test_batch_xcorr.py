@@ -10,7 +10,9 @@ import numpy as np
 from rcc import BatchXCorr
 import xcorr_util as xcu
 
-export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
+
 plot_input_data = False
 plot_statistics = False
 normalize_inputs = False
@@ -23,6 +25,12 @@ with open(fn, 'rb') as f: d = dill.load(f)
 correlations = d['comps']
 Cmax_test = d['Cmax']
 Camax_test = d['Camax']
+
+# NOTE: adding reference correlation used for debugging
+# image0000.tiff, templ0000.tiff
+correlations = np.vstack ((np.array([0, 0]), correlations))
+Cmax_test = np.append(np.array([1.000000]), Cmax_test)
+Camax_test = np.vstack((np.array([364, 749]), Camax_test)) # (y,x)
 
 #NOTE: using dictionary as a proxy but it would be instead a numpy array
 # images = np.empty(NUM_IMAGES)

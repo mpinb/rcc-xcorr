@@ -9,17 +9,17 @@ import multiprocessing as mp
 from rcc import BatchXCorr
 import xcorr_util as xcu
 
-export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
+#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
 #export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-#export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
+export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
 plot_input_data = False
 plot_statistics = False
 normalize_inputs = False
 group_correlations = False
-limit_input_size = True
-max_sample_size = 200 # value used when the limit input size flag is True
-skip_correlations = False
-num_skip_correlations = 1200 # value used when skip correlations flag is True
+limit_input_size = False
+max_sample_size = 400 # value used when the limit input size flag is True
+skip_correlations = True
+num_skip_correlations = 0 # value used when skip correlations flag is True
 crop_output = (221, 221) # use for the 3d align case
 #crop_output = (0, 0) # use for the 2d align case
 use_gpu = True
@@ -30,14 +30,6 @@ with open(fn, 'rb') as f: d = dill.load(f)
 correlations = d['comps']
 Cmax_test = d['Cmax']
 Camax_test = d['Camax']
-
-# NOTE: adding reference correlation used for debugging
-# image0000.tiff, templ0000.tiff
-
-correlations = np.vstack ((np.array([0, 0]), correlations[1:]))
-Cmax_test = np.append(np.array([1.000000]), Cmax_test[1:])
-Camax_test = np.vstack((np.array([364, 749]), Camax_test[1:])) # (y,x)
-
 
 print(f'[BATCH_XCORR] Total correlations: {len(correlations)}')
 
@@ -55,7 +47,7 @@ templ_files = xcu.search_files(export_xcorr_comps_path, r'templ([0-9]+)\.tif')
 # The approach is not robust. It relies on the dictionary to preserve the read order
 if limit_input_size:
     sample_size = min(len(correlations), max_sample_size)
-    print(f'[BATCH_XCORR] Limit input size. Sample size: {sample_size}')
+    print(f'[BATCH_XCORR] Limiting input size. Sample size: {sample_size}')
     image_set, template_set = xcu.sampled_correlations_input(correlations, sample_size)
     image_files = {k:image_files[k] for k in image_set}
     templ_files = {k:templ_files[k] for k in template_set}
@@ -119,16 +111,17 @@ print(f"Peak values match: {np.allclose(np.transpose(result_peaks), Cmax_test[:s
 #print(result_coords)
 #print(Camax_test[:sample_size])
 
-for correlation, \
+for correlation_indx, correlation, \
     test_peak, test_coord, \
     result_peak, result_coord \
-        in zip(correlations[:sample_size],
+        in zip(range(num_skip_correlations, num_skip_correlations+sample_size),
+                  correlations[:sample_size],
                   Cmax_test[:sample_size],
                   Camax_test[:sample_size],
                   result_peaks,
                   result_coords):
-    #if True:
     if not(np.allclose(result_coord, test_coord) and np.isclose(result_peak, test_peak, atol=1e-5)):
+        print(f'[MISMATCH CORR] CORR_ID: {correlation_indx}, CORRELATION: {correlation}')
         print(f'[MISMATCH COORD] RCOORD:{result_coord} TCOORD:{test_coord}')
         print(f'[MISMATCH PEAK] RMAX: {result_peak} TMAX:{test_peak}')
         xcu.plot_xcorr(correlation, images, templates,
