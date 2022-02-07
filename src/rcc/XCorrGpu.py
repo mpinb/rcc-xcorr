@@ -239,7 +239,7 @@ class XCorrGpu:
             xcorr_peak = cp.argmax(norm_xcorr)
             y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
 
-        return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
+            return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
 
     # fast normalized cross-correlation
     def match_template_array(self, image, template_list, corr_list, corr_list_num=1):
@@ -285,4 +285,4 @@ class XCorrGpu:
                 match_results_coord = np.append(match_results_coord, match_result_coord, axis=0)
                 match_results_peak = np.append(match_results_peak, match_result_peak, axis=0)
 
-        return match_results_coord, match_results_peak
+            return match_results_coord, match_results_peak
