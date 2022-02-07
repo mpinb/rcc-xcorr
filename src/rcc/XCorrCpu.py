@@ -45,6 +45,10 @@ class XCorrCpu:
     def description(self):
         return f"[XCorrCpu] normalize_input:{self.normalize_input}"
 
+    def cleanup(self):
+        pass
+
+
     # Return the previously computed correlation
     # if the cache_correlation flag is True
     def get_correlation(self):
@@ -198,7 +202,7 @@ class XCorrCpu:
         return norm_xcorr_list
 
     # fast normalized cross-correlation
-    def match_template(self, image, template, correlation_num):
+    def match_template(self, image, template, correlation_num=1):
 
         if self.normalize_input:
             image -= image.mean()
@@ -207,9 +211,9 @@ class XCorrCpu:
         norm_xcorr = self.norm_xcorr(image, template, mode='constant', constant_values=0)
 
         # cropping the norm_xcorr
-        cropy, cropx = self.crop_output
-        origy, origx = norm_xcorr.shape
-        norm_xcorr = norm_xcorr[cropy:origy - cropy, cropx:origx - cropx]
+        cropx, cropy = self.crop_output
+        origx, origy = norm_xcorr.shape
+        norm_xcorr = norm_xcorr[cropx:origx - cropx, cropy:origy - cropy]
 
         # cache correlation
         if self.cache_correlation:
@@ -219,10 +223,14 @@ class XCorrCpu:
         xcorr_peak = np.argmax(norm_xcorr)
         y, x = np.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
 
-        return y, x, norm_xcorr[y,x]
+        #if origx != origy:
+        #    print(f'[DEBUG CORR_ID: {correlation_num}] Shape cropped cross correlation (Y,X) : {norm_xcorr.shape}')
+        #    print(f'[DEBUG CORR_ID: {correlation_num}] Unravel index y: {y}, x: {x}')
+
+        return y + cropy, x + cropx, norm_xcorr[y,x]
 
     # fast normalized cross-correlation
-    def match_template_array(self, image, template_list, corr_list, corr_list_num):
+    def match_template_array(self, image, template_list, corr_list, corr_list_num=1):
 
         num_templates = len(template_list)
 
@@ -241,9 +249,9 @@ class XCorrCpu:
         norm_xcorr_list = self.norm_xcorr_array(image, templates_array, mode='constant', constant_values=0)
 
         # cropping the correlations
-        cropy, cropx = self.crop_output
-        origy, origx = norm_xcorr_list[0].shape
-        norm_xcorr_list = [norm_xcorr[cropy:origy - cropy, cropx:origx - cropx] for norm_xcorr in norm_xcorr_list]
+        cropx, cropy = self.crop_output
+        origx, origy = norm_xcorr_list[0].shape
+        norm_xcorr_list = [norm_xcorr[cropx:origx - cropx, cropy:origy - cropy] for norm_xcorr in norm_xcorr_list]
 
         # cache correlation
         if self.cache_correlation:
@@ -257,7 +265,7 @@ class XCorrCpu:
             # NOTE: argmax returns the first occurrence of the maximum value
             xcorr_peak = np.argmax(norm_xcorr)
             y, x = np.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
-            match_result_coord = np.array([[corr_list[indx], y, x]])
+            match_result_coord = np.array([[corr_list[indx], y + cropy, x + cropx]])
             match_result_peak = np.array([[corr_list[indx], norm_xcorr[y,x]]])
             match_results_coord = np.append(match_results_coord, match_result_coord, axis=0)
             match_results_peak = np.append(match_results_peak, match_result_peak, axis=0)

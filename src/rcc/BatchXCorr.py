@@ -45,19 +45,21 @@ def group_correlations(sorted_correlations):
 
 class BatchXCorr:
 
-    def __init__(self, images, templates, correlations, normalize_input=False, use_gpu=True):
+    def __init__(self, images, templates, correlations,
+                 normalize_input=False, crop_output=(0, 0), use_gpu=True):
         self.images = images
         self.templates = templates
         self.correlations = correlations
         self.normalize_input = normalize_input
+        self.crop_output = crop_output
         self.use_gpu = use_gpu
 
     def perform_correlations(self):
 
         if self.use_gpu:
-            xcorr = XCorrGpu(normalize_input=self.normalize_input)
+            xcorr = XCorrGpu(normalize_input=self.normalize_input, crop_output=self.crop_output)
         else:
-            xcorr = XCorrCpu(normalize_input=self.normalize_input)
+            xcorr = XCorrCpu(normalize_input=self.normalize_input, crop_output=self.crop_output)
 
         futures = []
         with tqdm(total=len(self.correlations), delay=1) as progress:
@@ -78,6 +80,9 @@ class BatchXCorr:
             corr_result_peak = np.array([[peak]])
             batch_results_coord = np.append(batch_results_coord, corr_result_coord, axis=0)
             batch_results_peak = np.append(batch_results_peak, corr_result_peak, axis=0)
+
+        # cleanup memory
+        xcorr.cleanup()
 
         return batch_results_coord, batch_results_peak
 
@@ -107,7 +112,7 @@ class BatchXCorr:
                     #Loading templates
                     templates_list = [self.templates[templ_id] for templ_id in templ_ids]
                     future = pool.submit(xcorr.match_template_array,
-                                         group_image, templates_list, correlations_list, corr_list_num)
+                                         group_image, templates_list, correlations_list, corr_list_num) # use corr_list_num to reorder the results
                     future.add_done_callback(lambda p: progress.update(1))
                     futures.append(future)
 
@@ -123,6 +128,9 @@ class BatchXCorr:
         corr_id_col = 0  # sorting batch correlation results by correlation id
         batch_results_coord = batch_results_coord[np.argsort(batch_results_coord[:, corr_id_col])]
         batch_results_peak = batch_results_peak[np.argsort(batch_results_peak[:, corr_id_col])]
+
+        # cleanup memory
+        xcorr.cleanup()
 
         # remove the correlation id column from batch results
         return batch_results_coord[:,1:], batch_results_peak[:, 1:] # removing the correlation_id column

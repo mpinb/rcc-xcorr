@@ -44,13 +44,21 @@ class XCorrGpu:
         self.normalize_input = normalize_input
         self.cache_correlation = cache_correlation
         # NOTE: gpu util uses nvidia-smi to set the cuda device count
-        self.cuda_devices = GPUtil.getAvailable(order='first', limit=4)
+        #self.cuda_devices = GPUtil.getAvailable(order='first', limit=4, maxLoad=1.0, maxMemory=1.0)
+        # Extract the device IDs from the GPUs and return them
+        self.cuda_devices = [gpu.id for gpu in GPUtil.getGPUs()]
         self.num_devices = len(self.cuda_devices)
-        print(f'Using {self.num_devices} CUDA devices: {self.cuda_devices} ')
+        print(f'Using {self.num_devices} CUDA device(s): {self.cuda_devices} ')
+        # GPUtil.showUtilization(all=True)
 
     # XCorrGpu info
     def description(self):
         return f"[XCorrGpu] normalize_input:{self.normalize_input}"
+
+    def cleanup(self):
+        # free allocated memory
+        mempool = cp.get_default_memory_pool()
+        mempool.free_all_blocks()
 
     # Return the previously computed correlation
     # if the cache_correlation flag is True
@@ -205,7 +213,7 @@ class XCorrGpu:
         return norm_xcorr_list
 
     # fast normalized cross-correlation
-    def match_template(self, image, template, correlation_num):
+    def match_template(self, image, template, correlation_num=1):
         # using correlation_number to assign cuda device (round robin)
         cuda_device = self.cuda_devices[correlation_num % self.num_devices]
         with cp.cuda.Device(cuda_device):
@@ -219,9 +227,9 @@ class XCorrGpu:
             norm_xcorr = self.norm_xcorr(image_gpu, template_gpu, mode='constant', constant_values=0)
 
             # cropping the norm_xcorr
-            cropy, cropx = self.crop_output
-            origy, origx = norm_xcorr.shape
-            norm_xcorr = norm_xcorr[cropy:origy-cropy,cropx:origx-cropx]
+            cropx, cropy = self.crop_output
+            origx, origy = norm_xcorr.shape
+            norm_xcorr = norm_xcorr[cropx:origx - cropx, cropy:origy - cropy]
 
             # cache correlation
             if self.cache_correlation:
@@ -231,10 +239,10 @@ class XCorrGpu:
             xcorr_peak = cp.argmax(norm_xcorr)
             y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
 
-            return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
+        return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
 
     # fast normalized cross-correlation
-    def match_template_array(self, image, template_list, corr_list, corr_list_num):
+    def match_template_array(self, image, template_list, corr_list, corr_list_num=1):
         # using correlation_list_number to assign cuda device (round robin)
         cuda_device = self.cuda_devices[corr_list_num % self.num_devices]
         with cp.cuda.Device(cuda_device):
@@ -256,9 +264,9 @@ class XCorrGpu:
             norm_xcorr_list = self.norm_xcorr_array(image_gpu, templates_array, mode='constant', constant_values=0)
 
             # cropping the correlations
-            cropy, cropx = self.crop_output
-            origy, origx = norm_xcorr_list[0].shape
-            norm_xcorr_list = [norm_xcorr[cropy:origy-cropy, cropx:origx-cropx] for norm_xcorr in norm_xcorr_list]
+            cropx, cropy = self.crop_output
+            origx, origy = norm_xcorr_list[0].shape
+            norm_xcorr_list = [norm_xcorr[cropx:origx - cropx, cropy:origy - cropy] for norm_xcorr in norm_xcorr_list]
 
             # cache correlation
             if self.cache_correlation:
@@ -272,9 +280,9 @@ class XCorrGpu:
                 # NOTE: argmax returns the first occurrence of the maximum value
                 xcorr_peak = cp.argmax(norm_xcorr)
                 y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
-                match_result_coord = np.array([[corr_list[indx], y.get(), x.get()]])
+                match_result_coord = np.array([[corr_list[indx], y.get() + cropy, x.get() + cropx]])
                 match_result_peak = np.array([[corr_list[indx], norm_xcorr[y,x].get()]])
                 match_results_coord = np.append(match_results_coord, match_result_coord, axis=0)
                 match_results_peak = np.append(match_results_peak, match_result_peak, axis=0)
 
-            return match_results_coord, match_results_peak
+        return match_results_coord, match_results_peak

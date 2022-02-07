@@ -9,8 +9,8 @@ import multiprocessing as mp
 from rcc import BatchXCorr
 import xcorr_util as xcu
 
-#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
-export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
+#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
 #export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
 plot_input_data = False
 plot_statistics = False
@@ -18,8 +18,10 @@ normalize_inputs = False
 group_correlations = False
 limit_input_size = True
 max_sample_size = 200 # value used when the limit input size flag is True
-skip_correlations = True
-num_skip_correlations = 0 # value used when skip correlations flag is True
+skip_correlations = False
+num_skip_correlations = 1200 # value used when skip correlations flag is True
+crop_output = (221, 221) # use for the 3d align case
+#crop_output = (0, 0) # use for the 2d align case
 use_gpu = True
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
@@ -28,6 +30,14 @@ with open(fn, 'rb') as f: d = dill.load(f)
 correlations = d['comps']
 Cmax_test = d['Cmax']
 Camax_test = d['Camax']
+
+# NOTE: adding reference correlation used for debugging
+# image0000.tiff, templ0000.tiff
+
+correlations = np.vstack ((np.array([0, 0]), correlations[1:]))
+Cmax_test = np.append(np.array([1.000000]), Cmax_test[1:])
+Camax_test = np.vstack((np.array([364, 749]), Camax_test[1:])) # (y,x)
+
 
 print(f'[BATCH_XCORR] Total correlations: {len(correlations)}')
 
@@ -73,7 +83,7 @@ usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 print(f'[BATCH_XCORR] Current memory usage is {usage / 10 ** 3} MB')
 
 print(f'[BATCH_XCORR] Using GPU: {use_gpu}')
-print(f'[BATCH_XCORR] Grouping correlations (2D alignment): {group_correlations}')
+print(f'[BATCH_XCORR] Grouping correlations (2D alignment optimization): {group_correlations}')
 
 #if plot_statistics:
 #    plot_sample_size = len(correlations)
@@ -85,21 +95,23 @@ if plot_input_data:
 
 print(f'Testing rcc-xcorr batch mode.')
 start_time = time.time()
-batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_size], use_gpu=use_gpu)
+batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_size],
+                                           crop_output=crop_output, use_gpu=use_gpu)
 
 if group_correlations:
     result_coords, result_peaks = batch_correlations.perform_group_correlations()
 else:
     result_coords, result_peaks = batch_correlations.perform_correlations()
 
-
 stop_time = time.time()
 print(f"[BATCH_XCORR] elapsed time: {stop_time - start_time} seconds")
+
+#del batch_correlations
 
 #NOTE:  Using atol=1e-6 to compare computed vs. test correlation peak values
 #REF:   https://stackoverflow.com/questions/57063555/numpy-allclose-compare-arrays-with-floating-points
 print(f"Coordinates match: {np.allclose(result_coords, Camax_test[:sample_size])}")
-print(f"Peak values match: {np.allclose(np.transpose(result_peaks), Cmax_test[:sample_size], atol=1e-6)}")
+print(f"Peak values match: {np.allclose(np.transpose(result_peaks), Cmax_test[:sample_size], atol=1e-5)}")
 
 #print(np.transpose(result_peaks))
 #print(Cmax_test[:sample_size])
@@ -110,11 +122,16 @@ print(f"Peak values match: {np.allclose(np.transpose(result_peaks), Cmax_test[:s
 for correlation, \
     test_peak, test_coord, \
     result_peak, result_coord \
-        in zip( correlations[:sample_size],
+        in zip(correlations[:sample_size],
                   Cmax_test[:sample_size],
                   Camax_test[:sample_size],
                   result_peaks,
                   result_coords):
-    #print(f'max test: {test_peak} test coord: {test_coord}')
-    if not(np.allclose(result_coord, test_coord) and np.isclose(result_peak, test_peak, atol=1e-6)):
-        xcu.plot_xcorr(correlation, images, templates, test_peak, test_coord)
+    #if True:
+    if not(np.allclose(result_coord, test_coord) and np.isclose(result_peak, test_peak, atol=1e-5)):
+        print(f'[MISMATCH COORD] RCOORD:{result_coord} TCOORD:{test_coord}')
+        print(f'[MISMATCH PEAK] RMAX: {result_peak} TMAX:{test_peak}')
+        xcu.plot_xcorr(correlation, images, templates,
+                       crop_output=crop_output,
+                       expected_max=test_peak,
+                       expected_max_coord=test_coord)
