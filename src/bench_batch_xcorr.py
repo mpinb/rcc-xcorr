@@ -12,10 +12,9 @@ from rcc import BatchXCorr
 
 
 benchmark_plot_filename = 'benchmark_xcorr.png'
-#export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
 normalize_inputs = False
-use_gpu = True
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
 with open(fn, 'rb') as f: d = dill.load(f)
@@ -44,24 +43,31 @@ print(f'[BATCH_XCORR] Total read images: {len(images)}')
 print(f'[BATCH_XCORR] Total read templates: {len(templates)}')
 
 
-print(f'[BATCH_XCORR] benchmarking {"GPU" if use_gpu else "CPU"} correlation kernels.')
+print(f'[BATCH_XCORR] benchmarking GPU vs CPU correlation kernels.')
 correlations_size = len(correlations)
 #correlations_size = 20
 print(f'[BATCH_XCORR] sample_correlations_size: {correlations_size}')
 print(f'[BATCH_XCORR] n_range: {np.linspace(10, correlations_size, num=10, dtype=int).tolist()}')
 
-labels_cpu = ["XCorrCPU", "XCorrCPU(group)"]
-labels_gpu = ["XCorrGPU", "XCorrGPU(group)"]
+labels = ["XCorrCPU", "XCorrCPU(group)", "XCorrGPU", "XCorrGPU(group)"]
 
 perfplot.live(
     setup= lambda n: correlations[np.random.choice(correlations_size, size=n, replace=True)],
     kernels=[
-        lambda correlations_sample: BatchXCorr.BatchXCorr(images, templates, correlations_sample,
-                                                          use_gpu=use_gpu).perform_correlations(),
-        lambda correlations_sample: BatchXCorr.BatchXCorr(images, templates, correlations_sample,
-                                                          use_gpu=use_gpu).perform_group_correlations()
+        lambda correlations_sample: \
+            BatchXCorr.BatchXCorr(images, templates, correlations_sample,
+                                  group_correlations=False, use_gpu=False).execute_batch(),
+        lambda correlations_sample: \
+            BatchXCorr.BatchXCorr(images, templates, correlations_sample,
+                                  group_correlations=True, use_gpu=False).execute_batch(),
+        lambda correlations_sample: \
+            BatchXCorr.BatchXCorr(images, templates, correlations_sample,
+                                  group_correlations=False, use_gpu=True).execute_batch(),
+        lambda correlations_sample: \
+            BatchXCorr.BatchXCorr(images, templates, correlations_sample,
+                                  group_correlations=True, use_gpu=True).execute_batch()
     ],
-    labels=labels_gpu if use_gpu else labels_cpu,
+    labels= labels,
     #n_range=[2 ** k for k in range(1,11)],
     n_range=np.linspace(10, correlations_size, num=10, dtype=int).tolist(), # use 20 sample points
     xlabel="len(correlations_sample)",
@@ -77,4 +83,3 @@ perfplot.live(
     # relative_to=1,  # plot the timings relative to one of the measurements
     # flops=lambda n: 3*n,  # FLOPS plots
 )
-

@@ -53,6 +53,7 @@ def plot_xcorr(correlation, images, templates, crop_output, expected_max, expect
     correlation_cpu = xcorr_cpu.get_correlation()
     correlation_gpu = cp.asnumpy(xcorr_gpu.get_correlation())
     print(f'Image shape: {image.shape} Correlation shape: {correlation_cpu.shape}')
+    print(f'Image type: {image.dtype} Correlation shape: {correlation_cpu.dtype}')
     f, axes = plt.subplots(2, 2)
     f.suptitle(f'Expected Correlation max: {expected_max:.6f} (y,x): {expected_max_coord}', y=0.04)
     axes[0,0].set_title(f'Image\nid: {image_id}')

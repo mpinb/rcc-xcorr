@@ -16,7 +16,7 @@ export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s
 plot_input_data = False
 plot_statistics = False
 normalize_inputs = False
-group_correlations = False
+group_correlations = True
 use_gpu = True
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
@@ -65,12 +65,9 @@ print(f'Testing rcc-xcorr batch mode.')
 start_time = time.time()
 #sample_correlations = 5
 sample_correlations = len(correlations)
-batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_correlations], use_gpu=use_gpu)
-
-if group_correlations:
-    result_coords, result_peaks = batch_correlations.perform_group_correlations()
-else:
-    result_coords, result_peaks = batch_correlations.perform_correlations()
+batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_correlations],
+                                           use_gpu=use_gpu, group_correlations=group_correlations)
+result_coords, result_peaks = batch_correlations.execute_batch()
 
 stop_time = time.time()
 print(f"[BATCH_XCORR] elapsed time: {stop_time - start_time} seconds")

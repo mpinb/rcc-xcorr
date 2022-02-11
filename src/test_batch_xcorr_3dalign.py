@@ -9,20 +9,22 @@ import multiprocessing as mp
 from rcc import BatchXCorr
 import xcorr_util as xcu
 
-#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
+export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
 #export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
+#export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
 plot_input_data = False
 plot_statistics = False
 normalize_inputs = False
 group_correlations = False
-limit_input_size = False
-max_sample_size = 200 # value used when the limit input size flag is True
+limit_input_size = True
+max_sample_size = 400 # value used when the limit input size flag is True
 skip_correlations = True
 num_skip_correlations = 0 # value used when skip correlations flag is True
 crop_output = (221, 221) # use for the 3d align case
 #crop_output = (0, 0) # use for the 2d align case
 use_gpu = True
+num_gpus = 1
+num_workers = 4 * num_gpus if use_gpu else mp.cpu_count()
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
 with open(fn, 'rb') as f: d = dill.load(f)
@@ -51,18 +53,13 @@ if limit_input_size:
     image_set, template_set = xcu.sampled_correlations_input(correlations, sample_size)
     image_files = {k:image_files[k] for k in image_set}
     templ_files = {k:templ_files[k] for k in template_set}
-    #max_input_size = 200
-    #input_size = max(len(image_files), max_input_size)
-    #image_files = {k:v for count, (k,v) in enumerate(image_files.items()) if count < max_input_size}
-    #templ_files = {k:v for count, (k,v) in enumerate(templ_files.items()) if count < max_input_size}
-    #sample_correlations = input_size # assuming one-to-one image/template comparisons
 else:
     sample_size = len(correlations)
 
 # NOTE: Using dictionaries for testing. The final version will support a numpy array
 # images = np.empty(NUM_IMAGES)
 start_time = time.time()
-print(f'[BATCH_XCORR] Thread pool size: {mp.cpu_count()}')
+print(f'[BATCH_XCORR] Thread pool size: {num_workers}')
 print(f'[BATCH_XCORR] Loading {len(image_files)} images.')
 images = xcu.read_files_parallel_progress(image_files)
 print(f'[BATCH_XCORR] Loading {len(templ_files)} templates.')
@@ -77,9 +74,8 @@ print(f'[BATCH_XCORR] Current memory usage is {usage / 10 ** 3} MB')
 print(f'[BATCH_XCORR] Using GPU: {use_gpu}')
 print(f'[BATCH_XCORR] Grouping correlations (2D alignment optimization): {group_correlations}')
 
-#if plot_statistics:
-#    plot_sample_size = len(correlations)
-#    xcu.plot_statistics(images, templates, correlations, plot_sample_size)
+if plot_statistics:
+    xcu.plot_statistics(images, templates, correlations, len(correlations))
 
 if plot_input_data:
     plot_sample_size = 5
@@ -87,18 +83,20 @@ if plot_input_data:
 
 print(f'Testing rcc-xcorr batch mode.')
 start_time = time.time()
-batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_size],
-                                           crop_output=crop_output, use_gpu=use_gpu)
 
-if group_correlations:
-    result_coords, result_peaks = batch_correlations.perform_group_correlations()
-else:
-    result_coords, result_peaks = batch_correlations.perform_correlations()
+batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_size],
+                                           crop_output=crop_output, use_gpu=use_gpu,
+                                           num_gpus=num_gpus, num_workers=num_workers,
+                                           group_correlations=group_correlations)
+print(f'[BATCH_XCORR] {batch_correlations.description()}')
+result_coords, result_peaks = batch_correlations.execute_batch()
 
 stop_time = time.time()
 print(f"[BATCH_XCORR] elapsed time: {stop_time - start_time} seconds")
 
-#del batch_correlations
+# Sampling memory use. (maximum resident set size in kilobytes)
+usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+print(f'[BATCH_XCORR] Current memory usage is {usage / 10 ** 3} MB')
 
 #NOTE:  Using atol=1e-6 to compare computed vs. test correlation peak values
 #REF:   https://stackoverflow.com/questions/57063555/numpy-allclose-compare-arrays-with-floating-points

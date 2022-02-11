@@ -1,10 +1,8 @@
 import concurrent.futures as cf
-from multiprocessing.pool import ThreadPool
 
 from .XCorrCpu import XCorrCpu
 from .XCorrGpu import XCorrGpu
 import numpy as np
-import cupy as cp
 
 from tqdm.auto import tqdm
 
@@ -40,30 +38,63 @@ def group_correlations(sorted_correlations):
     grouped_correlations = np.split(sorted_correlations, np.cumsum(unique_images_frequencies)[:-1])
     return grouped_correlations
 
-# TODO:  A group correlations flag.  Sorting is only needed in the case of group correlations.
-# TODO:  Indexing the correlations is done both for sorted and unsorted correlations.
 
 class BatchXCorr:
 
     def __init__(self, images, templates, correlations,
-                 normalize_input=False, crop_output=(0, 0), use_gpu=True):
+                 normalize_input=False,
+                 group_correlations=False,
+                 crop_output=(0, 0),
+                 use_gpu=True,
+                 num_gpus=4,
+                 num_workers=4,
+                 override_eps=False,
+                 custom_eps=1e-6
+                 ):
         self.images = images
         self.templates = templates
         self.correlations = correlations
         self.normalize_input = normalize_input
+        self.group_correlations = group_correlations
         self.crop_output = crop_output
         self.use_gpu = use_gpu
+        self.num_gpus = num_gpus
+        self.num_workers = num_workers
+        self.override_eps = override_eps
+        self.custom_eps = custom_eps
 
-    def perform_correlations(self):
+    # BatchXCorr info
+    def description(self):
+        return f'BatchXCorr(num_gpus: {self.num_gpus}, num_workers: {self.num_workers})'
 
+    def execute_batch(self):
         if self.use_gpu:
-            xcorr = XCorrGpu(normalize_input=self.normalize_input, crop_output=self.crop_output)
+            xcorr = XCorrGpu(normalize_input=self.normalize_input,
+                             crop_output=self.crop_output,
+                             override_eps=self.override_eps,
+                             custom_eps=self.custom_eps,
+                             max_devices=self.num_gpus)
         else:
-            xcorr = XCorrCpu(normalize_input=self.normalize_input, crop_output=self.crop_output)
+            xcorr = XCorrCpu(normalize_input=self.normalize_input,
+                             crop_output=self.crop_output,
+                             override_eps=self.override_eps,
+                             custom_eps=self.custom_eps)
+
+        if self.group_correlations:
+            coords, peaks = self.__perform_group_correlations(xcorr)
+        else:
+            coords, peaks = self.__perform_correlations(xcorr)
+
+        # cleanup memory
+        xcorr.cleanup()
+
+        return coords, peaks
+
+    def __perform_correlations(self, xcorr):
 
         futures = []
         with tqdm(total=len(self.correlations), delay=1) as progress:
-            with cf.ThreadPoolExecutor(max_workers=12) as pool: # TODO: dynamically set the amount of workers
+            with cf.ThreadPoolExecutor(max_workers=self.num_workers) as pool:
                 for corr_num, correlation in enumerate(self.correlations):
                     image_id, templ_id = correlation
                     future = pool.submit(xcorr.match_template, self.images[image_id], self.templates[templ_id], corr_num)
@@ -81,17 +112,9 @@ class BatchXCorr:
             batch_results_coord = np.append(batch_results_coord, corr_result_coord, axis=0)
             batch_results_peak = np.append(batch_results_peak, corr_result_peak, axis=0)
 
-        # cleanup memory
-        xcorr.cleanup()
-
         return batch_results_coord, batch_results_peak
 
-    def perform_group_correlations(self):
-
-        if self.use_gpu:
-            xcorr = XCorrGpu(normalize_input=self.normalize_input)
-        else:
-            xcorr = XCorrCpu(normalize_input=self.normalize_input)
+    def __perform_group_correlations(self, xcorr):
 
         # NOTE: sorting correlations optimize copies of data to gpu
         sorted_correlations = sort_correlations(self.correlations)
@@ -100,7 +123,7 @@ class BatchXCorr:
 
         futures = []
         with tqdm(total=len(grouped_correlations), delay=1) as progress:
-            with cf.ThreadPoolExecutor(max_workers=4) as pool: # FIXME: dynamically set the amount of workers
+            with cf.ThreadPoolExecutor(max_workers=self.num_workers) as pool:
                 for corr_list_num, correlation_group in enumerate(grouped_correlations):
                     corr_id_array, image_id_array, templ_id_array = np.split(correlation_group, 3, axis=1)
                     correlations_list = np.array(corr_id_array).flatten()
@@ -112,7 +135,7 @@ class BatchXCorr:
                     #Loading templates
                     templates_list = [self.templates[templ_id] for templ_id in templ_ids]
                     future = pool.submit(xcorr.match_template_array,
-                                         group_image, templates_list, correlations_list, corr_list_num) # use corr_list_num to reorder the results
+                                         group_image, templates_list, correlations_list, corr_list_num)
                     future.add_done_callback(lambda p: progress.update(1))
                     futures.append(future)
 
@@ -128,9 +151,6 @@ class BatchXCorr:
         corr_id_col = 0  # sorting batch correlation results by correlation id
         batch_results_coord = batch_results_coord[np.argsort(batch_results_coord[:, corr_id_col])]
         batch_results_peak = batch_results_peak[np.argsort(batch_results_peak[:, corr_id_col])]
-
-        # cleanup memory
-        xcorr.cleanup()
 
         # remove the correlation id column from batch results
         return batch_results_coord[:,1:], batch_results_peak[:, 1:] # removing the correlation_id column

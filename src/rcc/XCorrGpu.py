@@ -38,22 +38,30 @@ def _window_sum(image, window_shape):
 # full alignment for the 3D alignment only edges overlap (mode = 'full')
 class XCorrGpu:
 
-    def __init__(self, crop_output=(0, 0), normalize_input=False, cache_correlation=False):
+    def __init__(self,
+                 normalize_input=False,
+                 crop_output=(0, 0),
+                 override_eps=False,
+                 custom_eps=1e-6,
+                 cache_correlation=False,
+                 max_devices=4):
         self.correlation = None
         self.crop_output = crop_output
+        self.override_eps = override_eps
+        self.custom_eps = custom_eps
         self.normalize_input = normalize_input
         self.cache_correlation = cache_correlation
         # NOTE: gpu util uses nvidia-smi to set the cuda device count
         #self.cuda_devices = GPUtil.getAvailable(order='first', limit=4, maxLoad=1.0, maxMemory=1.0)
         # Extract the device IDs from the GPUs and return them
         self.cuda_devices = [gpu.id for gpu in GPUtil.getGPUs()]
-        self.num_devices = len(self.cuda_devices)
-        print(f'Using {self.num_devices} CUDA device(s): {self.cuda_devices} ')
+        self.num_devices = min(len(self.cuda_devices), max_devices)
+        print(f'Using {self.num_devices} CUDA device(s): {self.cuda_devices[:self.num_devices]} ')
         # GPUtil.showUtilization(all=True)
 
     # XCorrGpu info
     def description(self):
-        return f"[XCorrGpu] normalize_input:{self.normalize_input}"
+        return f"XCorrGpu(normalize_input:{self.normalize_input}, crop_output:{self.crop_output})"
 
     def cleanup(self):
         # free allocated memory
@@ -103,6 +111,7 @@ class XCorrGpu:
 
         float_dtype = image.dtype
         image_shape = image.shape
+        small_value = self.custom_eps if self.override_eps else cp.finfo(float_dtype).eps
 
         pad_width = tuple((width, width) for width in template.shape)
         if mode == 'constant':
@@ -136,7 +145,7 @@ class XCorrGpu:
         response = cp.zeros_like(xcorr, dtype=float_dtype)
 
         # avoid zero-division
-        mask = denominator > cp.finfo(float_dtype).eps
+        mask = denominator > small_value
 
         response[mask] = numerator[mask] / denominator[mask]
 
@@ -148,6 +157,7 @@ class XCorrGpu:
         image_shape = image.shape
         template_array_size = len(template_array)
         template_shape = template_array[0].shape
+        small_value = self.custom_eps if self.override_eps else cp.finfo(float_dtype).eps
 
         if image.ndim != 2 or any(template_array[x].ndim != 2 for x in range(template_array_size)):
             raise ValueError("Dimensionality of image and/or templates should be 2.")
@@ -202,7 +212,7 @@ class XCorrGpu:
         norm_xcorr_list = [cp.zeros_like(xcorr, dtype=float_dtype) for xcorr in xcorr_list]
 
         # avoid zero-division
-        mask_list = [denominator > cp.finfo(float_dtype).eps for denominator in denominator_list]
+        mask_list = [denominator > small_value for denominator in denominator_list]
 
         for indx in range(template_array_size):
             mask = mask_list[indx]
