@@ -3,6 +3,7 @@ import resource
 import time
 import dill
 import os
+import cupy
 import numpy as np
 import multiprocessing as mp
 
@@ -11,7 +12,9 @@ import xcorr_util as xcu
 
 #export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
 #export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
+#export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
+export_xcorr_comps_path = '/axon/u/ovalerio/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
+
 plot_input_data = False
 plot_statistics = False
 normalize_inputs = False
@@ -23,7 +26,7 @@ num_skip_correlations = 0 # value used when skip correlations flag is True
 crop_output = (221, 221) # use for the 3d align case
 #crop_output = (0, 0) # use for the 2d align case
 use_gpu = True
-num_gpus = 4
+num_gpus = cupy.cuda.runtime.getDeviceCount()
 num_workers = 4 * num_gpus if use_gpu else mp.cpu_count()
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
