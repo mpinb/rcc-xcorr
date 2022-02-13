@@ -40,7 +40,8 @@ dependencies:
   - colorama=0.4.4=pyh9f0ad1d_0
   - cryptography=3.4.8=py39hbca0aa6_0
   - cudatoolkit=11.4.2=h00f7ccd_9
-  - cupy=9.5.0=py39h499daff_0
+#  - cupy=9.5.0=py39h499daff_0
+  - conda-forge::cupy=9.5.0 
   - cycler=0.10.0=py_2
   - cython=0.29.24=py39he80948d_0
   - cytoolz=0.11.0=py39h3811e60_3
