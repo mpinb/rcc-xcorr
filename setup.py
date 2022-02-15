@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setup(
     name='rcc-xcorr',  # the name used for pip install
-    version='1.0.0',
+    version='1.0.1',
     description='Perform template matching using fast normalized cross-correlation.',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -13,12 +13,13 @@ setup(
     packages=find_packages(exclude='tests'),
     #package_dir={'': 'src'},
     requires=[
+        'python=3.8',
         'cupy',
         'numpy',
         'scipy',
         'tqdm',
         'GPUtil',
-        # additional libraries used for the test and benchmarking scripts
+        # additional libraries used by the test and benchmarking scripts
         'perfplot',
         'tifffile',
         'dill',
