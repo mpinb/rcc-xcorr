@@ -1,10 +1,44 @@
 # rcc-xcorr
 A Python library to compute normalized 2D cross-correlation of images using GPU acceleration and python multiprocessing.
 
+**Contents**
+1. [Requirements](#requirements)
+2. [Installation](#installation)
+3. [Usage](#usage)
+4. [Options](#options)
+   * [normalize_input](#normalize_input)
+   * [crop_output](#crop_output)
+   * [use_gpu](#use_gpu)
+   * [group_correlations](#group_correlations)
+   * [num_workers](#num_workers)
+   * [num_gpus](#num_gpus)
+   * [override_eps](#override_eps)
+   * [custom_eps](#custom_eps)
+
+## Requirements
+To accelerate correlations using GPU an NVIDIA GPU with CUDA 11.2+ libraries installed. 
+
+The **rcc-xcorr** has been tested with Python 3.8
+
+Additional requirements:
+* cupy
+* numpy
+* scipy
+* [GPUtil](https://github.com/anderskm/gputil) 
+* [concurrent.futures](https://docs.python.org/3/library/concurrent.futures.html)
+* tqdm (to run the test scripts)
+* perfplot (to run the benchmark scripts)
+* tifffile (to run the test scripts)
+* dill (to run the test scripts)
+* matplotlib (to run the test scripts)
+
 ## Installation
 ```python
-pip install rcc-xcorr
+python -m pip install git+https://github.com/research-center-caesar/rcc-xcorr.git
 ```
+
+***Note:***  Read this [post](https://adamj.eu/tech/2019/03/11/pip-install-from-a-git-repository/) to understand 
+why ``python -m pip`` is preferred over just ``pip``.
 
 ## Usage
 
