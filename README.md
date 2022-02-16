@@ -47,7 +47,7 @@ The correlation list is a list of pairs, the first one correspond to the `image_
 the second correspond to a `template_id` (the template index within the templates array).
 
 ###Example:
-
+#### TODO: review package name rcc-xcorr, rcc or xcorr
 ````
 from rcc import BatchXCorr
 
