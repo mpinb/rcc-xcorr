@@ -6,8 +6,8 @@ import numpy as np
 import multiprocessing as mp
 import concurrent.futures as cf
 
-from rcc.XCorrCpu import XCorrCpu
-from rcc.XCorrGpu import XCorrGpu
+from xcorr.XCorrCpu import XCorrCpu
+from xcorr.XCorrGpu import XCorrGpu
 
 from tqdm.auto import tqdm
 from matplotlib import pyplot as plt

@@ -9,8 +9,10 @@ setup(
     description='Perform template matching using fast normalized cross-correlation.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    py_modules=['rcc'],  # the name used when importing the package
-    packages=find_packages(exclude='tests'),
+    py_modules=['rcc_xcorr'],  # the name used when importing the package
+    #packages=find_packages(exclude='tests'),
+    packages=['rcc_xcorr',
+              'rcc_xcorr.xcorr'],
     #package_dir={'': 'src'},
     requires=[
         #'python=3.8',

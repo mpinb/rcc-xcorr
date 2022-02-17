@@ -1,4 +1,5 @@
 import math
+import time
 
 import GPUtil
 
@@ -44,19 +45,33 @@ class XCorrGpu:
                  override_eps=False,
                  custom_eps=1e-6,
                  cache_correlation=False,
-                 max_devices=4):
+                 max_devices=1):
         self.correlation = None
         self.crop_output = crop_output
         self.override_eps = override_eps
         self.custom_eps = custom_eps
         self.normalize_input = normalize_input
         self.cache_correlation = cache_correlation
-        # NOTE: gpu util uses nvidia-smi to set the cuda device count
-        #self.cuda_devices = GPUtil.getAvailable(order='first', limit=4, maxLoad=1.0, maxMemory=1.0)
+        attempts = 5 # NOTE: attempts to use the GPU
+        for i in range(attempts):
+            # NOTE: gpu util uses nvidia-smi to set the cuda device count
+            self.cuda_devices = GPUtil.getAvailable(order='first', limit=max_devices, maxLoad=0.5, maxMemory=0.5)
+            self.num_devices = len(self.cuda_devices)
+            if self.num_devices:
+                print(f'Using {self.num_devices} CUDA device(s): {self.cuda_devices[:self.num_devices]} ')
+                break
+            # If not the last attempt, sleep for 5 seconds and retry
+            if i != attempts-1:
+                GPUtil.showUtilization()
+                self.cleanup()
+                time.sleep(10)
+            else:
+                raise RuntimeError(f'Could not find an available GPU after {attempts} attempts.')
+
+
         # Extract the device IDs from the GPUs and return them
-        self.cuda_devices = [gpu.id for gpu in GPUtil.getGPUs()]
-        self.num_devices = min(len(self.cuda_devices), max_devices)
-        print(f'Using {self.num_devices} CUDA device(s): {self.cuda_devices[:self.num_devices]} ')
+        #self.cuda_devices = [gpu.id for gpu in GPUtil.getGPUs()]
+        #self.num_devices = min(len(self.cuda_devices), max_devices)
         # GPUtil.showUtilization(all=True)
 
     # XCorrGpu info
@@ -67,6 +82,7 @@ class XCorrGpu:
         # free allocated memory
         mempool = cp.get_default_memory_pool()
         mempool.free_all_blocks()
+        print(f'Used bytes: {mempool.used_bytes()}')
 
     # Return the previously computed correlation
     # if the cache_correlation flag is True
@@ -249,7 +265,17 @@ class XCorrGpu:
             xcorr_peak = cp.argmax(norm_xcorr)
             y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
 
-            return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
+            xcorr_peak_out = norm_xcorr[y, x].get()
+            y_out = y.get() + cropy
+            x_out = x.get() + cropx
+
+            # Free memory
+            del norm_xcorr
+            del image_gpu
+            del template_gpu
+
+            return y_out, x_out, xcorr_peak_out
+            #return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
 
     # fast normalized cross-correlation
     def match_template_array(self, image, template_list, corr_list, corr_list_num=1):

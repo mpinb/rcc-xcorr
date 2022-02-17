@@ -10,7 +10,7 @@ import numpy as np
 import multiprocessing as mp
 import perfplot
 
-from rcc import BatchXCorr
+from xcorr import BatchXCorr
 import xcorr_util as xcu
 
 
@@ -68,7 +68,7 @@ print(f'[BATCH_XCORR] n_range: {n_range}')
 use_gpu = True
 max_gpus = cp.cuda.runtime.getDeviceCount()
 num_gpus = np.linspace(0, max_gpus, num=max_gpus+1, dtype=int).tolist()
-num_workers = [4 * num_gpu if num_gpu else mp.cpu_count() for num_gpu in num_gpus]
+num_workers = [3 * num_gpu if num_gpu else mp.cpu_count() for num_gpu in num_gpus]
 labels = [f"XCorr(num_gpus={gpu},num_workers={worker})" for gpu, worker in zip(num_gpus, num_workers)]
 use_gpus = [True if gpu else False for gpu in num_gpus]
 

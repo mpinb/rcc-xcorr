@@ -65,7 +65,7 @@ class BatchXCorr:
 
     # BatchXCorr info
     def description(self):
-        return f'BatchXCorr(num_gpus: {self.num_gpus}, num_workers: {self.num_workers})'
+        return f'BatchXCorr(use_gpu: {self.use_gpu}, num_gpus: {self.num_gpus}, num_workers: {self.num_workers})'
 
     def execute_batch(self):
         if self.use_gpu:
