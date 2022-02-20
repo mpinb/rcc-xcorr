@@ -1,5 +1,8 @@
 import math
+import os
+import sys
 import time
+import logging
 
 import GPUtil
 
@@ -7,6 +10,11 @@ import numpy as np
 import cupy as cp
 from cupyx.scipy.signal import fftconvolve
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setStream(sys.stdout)
+logger.addHandler(handler)
 
 # We thank Eli Horn for providing this code, used with his permission,
 # to speed up the calculation of local sums. The algorithm depends on
@@ -52,27 +60,24 @@ class XCorrGpu:
         self.custom_eps = custom_eps
         self.normalize_input = normalize_input
         self.cache_correlation = cache_correlation
-        attempts = 5 # NOTE: attempts to use the GPU
+        attempts = 5  # NOTE: attempts to use the GPU
         for i in range(attempts):
             # NOTE: gpu util uses nvidia-smi to set the cuda device count
             self.cuda_devices = GPUtil.getAvailable(order='first', limit=max_devices, maxLoad=0.5, maxMemory=0.5)
             self.num_devices = len(self.cuda_devices)
             if self.num_devices:
-                print(f'Using {self.num_devices} CUDA device(s): {self.cuda_devices[:self.num_devices]} ')
+                logger.info(f'[PID: {os.getpid()}] Using {self.num_devices} CUDA device(s): {self.cuda_devices} ')
+                gpus = GPUtil.getGPUs()
+                gpus = [gpus[g] for g in self.cuda_devices]
+                for gpu in gpus:
+                    logger.info(f'[PID: {os.getpid()}] GPU: {gpu.id}, Available memory: {gpu.memoryFree} MB')
                 break
             # If not the last attempt, sleep for 5 seconds and retry
             if i != attempts-1:
                 GPUtil.showUtilization()
-                self.cleanup()
                 time.sleep(10)
             else:
                 raise RuntimeError(f'Could not find an available GPU after {attempts} attempts.')
-
-
-        # Extract the device IDs from the GPUs and return them
-        #self.cuda_devices = [gpu.id for gpu in GPUtil.getGPUs()]
-        #self.num_devices = min(len(self.cuda_devices), max_devices)
-        # GPUtil.showUtilization(all=True)
 
     # XCorrGpu info
     def description(self):
@@ -82,7 +87,6 @@ class XCorrGpu:
         # free allocated memory
         mempool = cp.get_default_memory_pool()
         mempool.free_all_blocks()
-        print(f'Used bytes: {mempool.used_bytes()}')
 
     # Return the previously computed correlation
     # if the cache_correlation flag is True
@@ -240,8 +244,13 @@ class XCorrGpu:
 
     # fast normalized cross-correlation
     def match_template(self, image, template, correlation_num=1):
+
         # using correlation_number to assign cuda device (round robin)
         cuda_device = self.cuda_devices[correlation_num % self.num_devices]
+
+        logger.debug(f'[PID: {os.getpid()}] image: {image.shape}, template: {template.shape}, corr_num: {correlation_num}')
+        logger.debug(f'[PID: {os.getpid()}] cuda_device: {cuda_device}, corr_num: {correlation_num}')
+
         with cp.cuda.Device(cuda_device):
             image_gpu = cp.asarray(image)
             template_gpu = cp.asarray(template)
@@ -265,17 +274,19 @@ class XCorrGpu:
             xcorr_peak = cp.argmax(norm_xcorr)
             y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
 
-            xcorr_peak_out = norm_xcorr[y, x].get()
-            y_out = y.get() + cropy
-            x_out = x.get() + cropx
+            # xcorr_peak_out = norm_xcorr[y, x].get()
+            # y_out = y.get() + cropy
+            # x_out = x.get() + cropx
+            #
+            # # Free memory
+            # del norm_xcorr
+            # del image_gpu
+            # del template_gpu
 
-            # Free memory
-            del norm_xcorr
-            del image_gpu
-            del template_gpu
-
-            return y_out, x_out, xcorr_peak_out
-            #return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
+            #logger.debug(
+            #    f'[PID: {os.getpid()}] y_out: {y_out}, x_out: {x_out}, xcorr_peak_out: {xcorr_peak_out}')
+            #return y_out, x_out, xcorr_peak_out
+            return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
 
     # fast normalized cross-correlation
     def match_template_array(self, image, template_list, corr_list, corr_list_num=1):

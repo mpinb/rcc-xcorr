@@ -8,10 +8,10 @@ import re
 import numpy as np
 
 from xcorr import BatchXCorr
-import xcorr_util as xcu
+from rcc_xcorr.xcorr import XCorrUtil as xcu
 
-export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-#export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
+#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
 
 plot_input_data = False
 plot_statistics = False

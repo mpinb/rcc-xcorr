@@ -1,10 +1,18 @@
 import concurrent.futures as cf
+import os
+import logging
 
 from .XCorrCpu import XCorrCpu
 from .XCorrGpu import XCorrGpu
+from .XCorrUtil import TqdmLoggingHandler
+
 import numpy as np
 
 from tqdm.auto import tqdm
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(TqdmLoggingHandler())
 
 
 # The index_correlations method prepends a correlation list
@@ -112,6 +120,8 @@ class BatchXCorr:
             batch_results_coord = np.append(batch_results_coord, corr_result_coord, axis=0)
             batch_results_peak = np.append(batch_results_peak, corr_result_peak, axis=0)
 
+        logger.info(f'[PID: {os.getpid()}] {len(self.correlations)} correlations completed. ')
+
         return batch_results_coord, batch_results_peak
 
     def __perform_group_correlations(self, xcorr):
@@ -151,6 +161,8 @@ class BatchXCorr:
         corr_id_col = 0  # sorting batch correlation results by correlation id
         batch_results_coord = batch_results_coord[np.argsort(batch_results_coord[:, corr_id_col])]
         batch_results_peak = batch_results_peak[np.argsort(batch_results_peak[:, corr_id_col])]
+
+        logger.info(f'[PID: {os.getpid()}] {len(grouped_correlations)} grouped correlations completed. ')
 
         # remove the correlation id column from batch results
         return batch_results_coord[:,1:], batch_results_peak[:, 1:] # removing the correlation_id column

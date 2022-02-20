@@ -12,8 +12,8 @@ from xcorr import BatchXCorr
 
 
 benchmark_plot_filename = 'benchmark_xcorr.png'
-#export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
 normalize_inputs = False
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
