@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
     normalize_inputs = False
     limit_input_size = True
-    max_sample_size = 200  # value used when the limit input size flag is True
+    max_sample_size = 300  # value used when the limit input size flag is True
     crop_output = (221, 221)  # use for the 3d align case
 
     fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
@@ -95,16 +95,17 @@ if __name__ == '__main__':
     print(f'[BATCH_XCORR] benchmarking rcc-xcorr GPU scaling.')
 
     print(f'[BATCH_XCORR] sample_size: {sample_size}')
-    n_range = np.linspace(50, sample_size, num=4, dtype=int).tolist()
+    n_range = np.linspace(30, sample_size, num=8, dtype=int).tolist()
     print(f'[BATCH_XCORR] n_range: {n_range}')
 
-    use_gpu = True
+    #use_gpu = True
     max_gpus = cp.cuda.runtime.getDeviceCount()
+    print(f'[BATCH_XCORR] max_gpus: {max_gpus}')
     num_gpus = np.linspace(0, max_gpus, num=max_gpus+1, dtype=int).tolist() # Benchmark CPU and GPU
     # num_gpus = np.linspace(1, max_gpus, num=max_gpus, dtype=int).tolist() # NOTE: Benchmark only GPU
 
     # NOTE: Adjust number of workers per GPU according to the running environment (e.g: SOMA = 4)
-    workers_per_gpu = 3
+    workers_per_gpu = 4
     num_workers = [workers_per_gpu * num_gpu if num_gpu else mp.cpu_count() for num_gpu in num_gpus]
     labels = [f"XCorr(num_gpus={gpu},num_workers={worker})" for gpu, worker in zip(num_gpus, num_workers)]
     use_gpus = [True if gpu else False for gpu in num_gpus]

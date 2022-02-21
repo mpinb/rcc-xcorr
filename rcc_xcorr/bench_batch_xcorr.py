@@ -47,7 +47,8 @@ if __name__ == '__main__':
 
     benchmark_plot_filename = 'benchmark_xcorr.svg'
     #export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-    export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+    #export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+    export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
     normalize_inputs = False
 
     fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
@@ -78,17 +79,17 @@ if __name__ == '__main__':
 
 
     print(f'[BATCH_XCORR] benchmarking GPU vs CPU correlation kernels.')
-    #correlations_size = len(correlations)
-    correlations_size = 100
+    correlations_size = len(correlations)
+    #correlations_size = 100
     print(f'[BATCH_XCORR] sample_correlations_size: {correlations_size}')
-    print(f'[BATCH_XCORR] n_range: {np.linspace(10, correlations_size, num=10, dtype=int).tolist()}')
+    print(f'[BATCH_XCORR] n_range: {np.linspace(10, correlations_size, num=20, dtype=int).tolist()}')
 
     labels = ["XCorrCPU", "XCorrCPU(group)", "XCorrGPU", "XCorrGPU(group)"]
     use_gpus = [False, False, True, True]
     num_gpus = [0, 0, 1, 1]
     use_grouping = [False, True, False, True]
     # NOTE: Adjust number of workers per GPU according to the running environment (eg.: SOMA = 4 wks)
-    workers_per_gpu = 3
+    workers_per_gpu = 4
     num_workers = [workers_per_gpu if use_gpu else mp.cpu_count() for use_gpu in use_gpus]
 
     kernels = list(map(
@@ -121,7 +122,7 @@ if __name__ == '__main__':
         # ],
         labels=labels,
         #n_range=[2 ** k for k in range(1,11)],
-        n_range=np.linspace(10, correlations_size, num=10, dtype=int).tolist(), # use 20 sample points
+        n_range=np.linspace(10, correlations_size, num=20, dtype=int).tolist(), # use 20 sample points
         xlabel="total correlations",
         # More optional arguments with their default values:
         # logx=False,  # set to True or False to force scaling
