@@ -16,7 +16,6 @@ import numpy as np
 from xcorr import BatchXCorr
 from rcc_xcorr.xcorr import XCorrUtil as xcu
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
@@ -48,7 +47,7 @@ if __name__ == '__main__':
     # REF3: https://github.com/explosion/spaCy/issues/5507
     mp.set_start_method('spawn')
 
-    benchmark_plot_filename = 'benchmark_xcorr_gpu_scaling.png'
+    benchmark_plot_filename = 'benchmark_xcorr_gpu_scaling.svg'
     #export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
     export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
 
