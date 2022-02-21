@@ -96,15 +96,17 @@ affect the **rcc-xcorr** performance.
 
 The plot illustrates the **xcorr-tool** performance using CPU vs GPU and enabling grouping.
 ![performance using CPU vs GPU](rcc_xcorr/benchmark_xcorr.svg)
-The performance gain by enabling grouping is small but noticeable in particular for a large number
-of correlations. Also notice that for a small number of correlations (***correlations > 30***) the 
-CPU mode has a better performance.
+
+***Notes:*** The performance gain by enabling grouping is noticeable for a large number of correlations. 
+Also notice that for a small number of correlations (***correlations > 30***) the CPU mode has better performance.
 
 ### Benchmarking Multi GPU
 
 The plot illustrates the **xcorr-tool** performance using 1, 2, 3 or 4 GPU(s) devices.
+
 ![performance using multiple GPUs](rcc_xcorr/benchmark_xcorr_gpu_scaling.svg)
-The number of workers per gpu is a value dependent on the GPU at hand. The goal is to keep
+
+***Notes:*** The number of workers per gpu is a value dependent on the GPU at hand. The goal is to keep
 the GPU always busy overlapping `host-to-device` copy operations using multiple worker processes
 each of them streaming data to the GPU device in parallel.
 
@@ -178,9 +180,9 @@ The correctness of the **rcc-xcorr** tool has been test against data created wit
 [emalign](https://github.com/research-center-caesar/emalign). The test scripts are:
 
 ### Test Cross Correlation (2D alignment)
-Test data consists of xx correlations used during `emalign` 2D alignment.
+Test data consists of 925 correlations used during `emalign` 2D alignment.
 [test_batch_xcorr.py](rcc_xcorr/test_batch_xcorr.py)
 
 ### Test Cross Correlation (3D alignment)
-Test data consists of xx correlations used during `emalign` 3D alignment.
+Test data consists of 2806 correlations used during `emalign` 3D alignment.
 [test_batch_xcorr_3dalign.py](rcc_xcorr/test_batch_xcorr_3dalign.py)
