@@ -14,7 +14,7 @@ from rcc_xcorr.xcorr import XCorrUtil as xcu
 export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
 
 plot_input_data = False
-plot_statistics = False
+plot_statistics = True
 normalize_inputs = False
 group_correlations = True
 use_gpu = True
