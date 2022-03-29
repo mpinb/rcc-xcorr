@@ -14,6 +14,15 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(TqdmLoggingHandler())
 
+# Testing if cupy is available on the system
+try:
+    import cupy as cp
+except ImportError as ie:
+    logger.warn(f"Error importing cupy package. {ie}")
+    cupy_available = False
+else:
+    cupy_available = True
+
 
 # The index_correlations method prepends a correlation list
 # with an extra column that is used to identify each correlation
@@ -70,6 +79,9 @@ class BatchXCorr:
         self.num_workers = num_workers
         self.override_eps = override_eps
         self.custom_eps = custom_eps
+        # Raising an error for the case the use_gpu flag is set but CuPy import failed
+        if use_gpu and not cupy_available:
+            raise RuntimeError("GPU support is missing. Please launch BatchXCorr with use_gpu flag set to False.")
 
     # BatchXCorr info
     def description(self):

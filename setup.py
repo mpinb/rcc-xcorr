@@ -14,19 +14,17 @@ setup(
     packages=['rcc_xcorr',
               'rcc_xcorr.xcorr'],
     #package_dir={'': 'src'},
+    python_requires=">=3.8",
     requires=[
-        #'python=3.8',
-        'cupy',
         'numpy',
         'scipy',
         'tqdm',
-        'GPUtil',
-        # additional libraries used by the test and benchmarking scripts
-        'perfplot',
-        'tifffile',
-        'dill',
-        'matplotlib'
     ],
+    extras_require={
+        'with-gpu': ['cupy', 'GPUtil'],
+        # optional libraries used by the test and benchmarking scripts
+        'with-test': ['perfplot', 'tifffile', 'dill', 'matplotlib'],
+    },
     url="https://github.com/research-center-caesar/rcc-xcorr.git",
     author="Omar Valerio",
     author_email="omar.valerio@mpinb.mpg.de",

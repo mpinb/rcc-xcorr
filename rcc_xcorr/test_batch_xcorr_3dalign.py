@@ -10,9 +10,11 @@ import multiprocessing as mp
 from xcorr import BatchXCorr
 from rcc_xcorr.xcorr import XCorrUtil as xcu
 
-#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
+# NOTE: remember to set the crop to (0, 0) when using 2d alignment data
 #export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
+
+export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
+#export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_3d_iorder3517'
 #export_xcorr_comps_path = '/axon/u/ovalerio/cne/watkins/xcorr_dump_macaque_3d_iorder3517'
 
 plot_input_data = False
