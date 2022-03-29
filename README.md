@@ -39,12 +39,20 @@ Additional requirements:
 * matplotlib (to run the test scripts)
 
 ## Installation
+
+Before installing `rcc-xcorr` please update `setuptools` and `pip`:
+
+```bash
+python -m pip install -U setuptools pip
+```
+
+By default, the `rcc-xcorr` tool is installed without GPU support using:
+
 ```bash
 python -m pip install git+https://github.com/research-center-caesar/rcc-xcorr.git
 ```
 
-The default installation will not install the optional dependencies used to run xcorr with GPU support. 
-In order to install the `rcc-xcorr` with optional dependencies enter the following command.
+In order to use the `rcc-xcorr` tool with GPU acceleration, the optional dependencies have to be installed too:
 
 ```bash
 python -m pip install git+https://github.com/research-center-caesar/rcc-xcorr.git#egg=rcc-xcorr[with-gpu]

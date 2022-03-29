@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setup(
     name='rcc-xcorr',  # the name used for pip install
-    version='1.0.1',
+    version='1.0.2',
     description='Perform template matching using fast normalized cross-correlation.',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -21,7 +21,7 @@ setup(
         'tqdm',
     ],
     extras_require={
-        'with-gpu': ['cupy', 'GPUtil'],
+        'with-gpu': ['cupy-cuda115', 'GPUtil'],
         # optional libraries used by the test and benchmarking scripts
         'with-test': ['perfplot', 'tifffile', 'dill', 'matplotlib'],
     },
@@ -35,7 +35,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Development Status :: 3 - Alpha",
-        "Environment :: GPU :: NVIDIA CUDA :: 11.0",
+        "Environment :: GPU :: NVIDIA CUDA :: 11.5",
         "Topic :: Scientific/Engineering :: Image Processing",
     ],
 )
