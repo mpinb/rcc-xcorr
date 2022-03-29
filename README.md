@@ -27,12 +27,12 @@ To accelerate correlations using GPU an NVIDIA GPU with CUDA 11.2+ libraries ins
 The **rcc-xcorr** has been tested with Python 3.8
 
 Additional requirements:
-* cupy
 * numpy
 * scipy
-* [GPUtil](https://github.com/anderskm/gputil) 
+* tqdm
+* cupy (optional)
+* [GPUtil](https://github.com/anderskm/gputil) (optional)
 * [concurrent.futures](https://docs.python.org/3/library/concurrent.futures.html)
-* tqdm (to run the test scripts)
 * perfplot (to run the benchmark scripts)
 * tifffile (to run the test scripts)
 * dill (to run the test scripts)
@@ -43,8 +43,16 @@ Additional requirements:
 python -m pip install git+https://github.com/research-center-caesar/rcc-xcorr.git
 ```
 
+The default installation will not install the optional dependencies used to run xcorr with GPU support. 
+In order to install the `rcc-xcorr` with optional dependencies enter the following command.
+
+```bash
+python -m pip install git+https://github.com/research-center-caesar/rcc-xcorr.git#egg=rcc-xcorr[with-gpu]
+```
+
 ***Note:***  Read this [post](https://adamj.eu/tech/2019/03/11/pip-install-from-a-git-repository/) to understand 
 why ``python -m pip`` is preferred over just ``pip``.
+
 
 ## Usage
 
