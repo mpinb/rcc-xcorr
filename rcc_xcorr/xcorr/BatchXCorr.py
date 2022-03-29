@@ -1,16 +1,17 @@
-import concurrent.futures as cf
-import numpy as np
-import logging
 import os
-
+import logging
+import numpy as np
 from tqdm.auto import tqdm
-from .XCorrUtil import TqdmLoggingHandler
+import concurrent.futures as cf
+
 from .XCorrCpu import XCorrCpu
 try:
     from .XCorrGpu import XCorrGpu
 except ImportError as ie:
     XCorrGpu = None
 
+# Setting the logger
+from .TqdmLoggingHandler import TqdmLoggingHandler
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(TqdmLoggingHandler())

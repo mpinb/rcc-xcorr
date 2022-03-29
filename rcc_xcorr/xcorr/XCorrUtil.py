@@ -1,6 +1,5 @@
 import os
 import re
-import logging
 import tifffile
 import cupy as cp
 import numpy as np
@@ -13,20 +12,6 @@ from .XCorrGpu import XCorrGpu
 from tqdm.auto import tqdm
 from matplotlib import pyplot as plt
 from multiprocessing.pool import ThreadPool
-
-
-# REF: https://stackoverflow.com/a/38739634
-class TqdmLoggingHandler(logging.Handler):
-    def __init__(self, level=logging.NOTSET):
-        super().__init__(level)
-
-    def emit(self, record):
-        try:
-            msg = self.format(record)
-            tqdm.write(msg)
-            self.flush()
-        except Exception:
-            self.handleError(record)
 
 
 def sampled_correlations_input(correlations, sample_size):
