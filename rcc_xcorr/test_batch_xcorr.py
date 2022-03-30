@@ -18,6 +18,7 @@ plot_statistics = True
 normalize_inputs = False
 group_correlations = True
 use_gpu = True
+disable_pbar = False
 
 fn = os.path.join(export_xcorr_comps_path, 'comps.dill')
 with open(fn, 'rb') as f: d = dill.load(f)
@@ -66,7 +67,8 @@ start_time = time.time()
 #sample_correlations = 5
 sample_correlations = len(correlations)
 batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_correlations],
-                                           use_gpu=use_gpu, group_correlations=group_correlations)
+                                           use_gpu=use_gpu, group_correlations=group_correlations,
+                                           disable_pbar=disable_pbar)
 result_coords, result_peaks = batch_correlations.execute_batch()
 
 stop_time = time.time()

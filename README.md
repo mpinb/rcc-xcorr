@@ -17,6 +17,7 @@ A Python library to compute normalized 2D cross-correlation of images using GPU 
    * [num_gpus](#num_gpus)
    * [override_eps](#override_eps)
    * [custom_eps](#custom_eps)
+   * [disable_pbar](#disable_pbar)
 6. [Tests](#tests)
    * [Test Cross Correlation (2D alignment)](#test_batch_xcorr)
    * [Test Cross Correlation (3D alignment)](#test_batch_xcorr_3dalign)
@@ -189,6 +190,11 @@ This flag is used to indicate the ***rcc-xcorr*** tool that a `custom_eps` value
 
 This option is used together with the `override_eps` flag to adopt a custom eps value to obtain the mask used to avoid
 zero divisions whenever small values are used in the denominator during the cross-correlation output normalization.
+
+### disable_pbar 
+***Syntax:*** `[disable_pbar=True|False(default)]`
+
+This option is used to switch off the progress bar indicator.
 
 ## Tests
 

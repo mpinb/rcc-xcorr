@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setup(
     name='rcc-xcorr',  # the name used for pip install
-    version='1.0.4',
+    version='1.0.5',
     description='Perform template matching using fast normalized cross-correlation.',
     long_description=long_description,
     long_description_content_type='text/markdown',

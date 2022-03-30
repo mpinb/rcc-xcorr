@@ -68,7 +68,8 @@ class BatchXCorr:
                  num_gpus=4,
                  num_workers=4,
                  override_eps=False,
-                 custom_eps=1e-6
+                 custom_eps=1e-6,
+                 disable_pbar=False
                  ):
         self.images = images
         self.templates = templates
@@ -81,6 +82,7 @@ class BatchXCorr:
         self.num_workers = num_workers
         self.override_eps = override_eps
         self.custom_eps = custom_eps
+        self.disable_pbar = disable_pbar
         # Raising an error for the case the use_gpu flag is set but CuPy import failed
         if use_gpu and not cupy_available:
             raise RuntimeError("GPU support is missing. Please launch BatchXCorr with use_gpu flag set to False.")
@@ -115,7 +117,7 @@ class BatchXCorr:
     def __perform_correlations(self, xcorr):
 
         futures = []
-        with tqdm(total=len(self.correlations), delay=1) as progress:
+        with tqdm(total=len(self.correlations), delay=1, disable=self.disable_pbar) as progress:
             with cf.ThreadPoolExecutor(max_workers=self.num_workers) as pool:
                 for corr_num, correlation in enumerate(self.correlations):
                     image_id, templ_id = correlation
@@ -146,7 +148,7 @@ class BatchXCorr:
         grouped_correlations = group_correlations(sorted_correlations)
 
         futures = []
-        with tqdm(total=len(grouped_correlations), delay=1) as progress:
+        with tqdm(total=len(grouped_correlations), delay=1, disable=self.disable_pbar) as progress:
             with cf.ThreadPoolExecutor(max_workers=self.num_workers) as pool:
                 for corr_list_num, correlation_group in enumerate(grouped_correlations):
                     corr_id_array, image_id_array, templ_id_array = np.split(correlation_group, 3, axis=1)

@@ -28,6 +28,7 @@ num_skip_correlations = 0 # value used when skip correlations flag is True
 crop_output = (221, 221) # use for the 3d align case
 #crop_output = (0, 0) # use for the 2d align case
 use_gpu = True
+disable_pbar = False
 num_gpus = cupy.cuda.runtime.getDeviceCount()
 num_workers = 3 * num_gpus if use_gpu else mp.cpu_count()
 
@@ -95,7 +96,8 @@ start_time = time.time()
 batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_size],
                                            crop_output=crop_output, use_gpu=use_gpu,
                                            num_gpus=num_gpus, num_workers=num_workers,
-                                           group_correlations=group_correlations)
+                                           group_correlations=group_correlations,
+                                           disable_pbar=disable_pbar)
 print(f'[BATCH_XCORR] {batch_correlations.description()}')
 result_coords, result_peaks = batch_correlations.execute_batch()
 
