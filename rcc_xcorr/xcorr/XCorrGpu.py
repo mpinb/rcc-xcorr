@@ -62,8 +62,13 @@ class XCorrGpu:
         self.cache_correlation = cache_correlation
         attempts = 5  # NOTE: attempts to use the GPU
         for i in range(attempts):
-            # NOTE: gpu util uses nvidia-smi to set the cuda device count
-            self.cuda_devices = GPUtil.getAvailable(order='first', limit=max_devices, maxLoad=0.5, maxMemory=0.5)
+            cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
+            logger.info(f'CUDA_VISIBLE_DEVICES: {cuda_visible_devices} max_devices: {max_devices}')
+            if cuda_visible_devices:  # Using CUDA_VISIBLE_DEVICES to set the cuda devices (if present)
+                self.cuda_devices = [int(d) for d in cuda_visible_devices.split(",")]
+                self.cuda_devices = self.cuda_devices[:cp.cuda.runtime.getDeviceCount()]
+            else:   # GPUtil uses nvidia-smi to set the available cuda devices
+                self.cuda_devices = GPUtil.getAvailable(order='first', limit=max_devices, maxLoad=0.5, maxMemory=0.5)
             self.num_devices = len(self.cuda_devices)
             if self.num_devices:
                 logger.info(f'[PID: {os.getpid()}] Using {self.num_devices} CUDA device(s): {self.cuda_devices} ')
@@ -286,6 +291,10 @@ class XCorrGpu:
             #logger.debug(
             #    f'[PID: {os.getpid()}] y_out: {y_out}, x_out: {x_out}, xcorr_peak_out: {xcorr_peak_out}')
             #return y_out, x_out, xcorr_peak_out
+
+            # clearing fft plan cache
+            cp.fft.config.get_plan_cache().clear()
+
             return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
 
     # fast normalized cross-correlation
@@ -331,5 +340,8 @@ class XCorrGpu:
                 match_result_peak = np.array([[corr_list[indx], norm_xcorr[y,x].get()]])
                 match_results_coord = np.append(match_results_coord, match_result_coord, axis=0)
                 match_results_peak = np.append(match_results_peak, match_result_peak, axis=0)
+
+            # clearing fft plan cache
+            cp.fft.config.get_plan_cache().clear()
 
             return match_results_coord, match_results_peak
