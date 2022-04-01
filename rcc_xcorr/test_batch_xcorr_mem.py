@@ -8,11 +8,12 @@ import os
 import re
 import numpy as np
 
-from rcc_xcorr.xcorr import BatchXCorr
+#from rcc_xcorr.xcorr import BatchXCorr
+from xcorr import BatchXCorr
 
-export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+#export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
 #export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-#export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
+export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
 
 print(f'[BATCH_XCORR] export_xcorr_comps_path: {export_xcorr_comps_path}')
 
@@ -71,8 +72,13 @@ sample_correlations = 300
 nrepeats = 10
 for i in range(nrepeats):
     print('repeat {} of {}'.format(i+1,nrepeats))
-    num_devices = random.randint(1, 4)
-    os.environ['CUDA_VISIBLE_DEVICES'] = ",".join([str(i) for i in range(0, num_devices)])
+    num_devices = 1
+    #num_devices = random.randint(1, 3)
+    #gpu_devices = [str(i) for i in range(0, num_devices)]
+    #random.shuffle(gpu_devices)
+    os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
+    #os.environ['CUDA_VISIBLE_DEVICES'] = ",".join(gpu_devices)
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(random.randint(0,3))
     batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_correlations],
                                                use_gpu=use_gpu, group_correlations=group_correlations,
                                                num_gpus=num_devices, disable_pbar=disable_pbar)

@@ -63,10 +63,14 @@ class XCorrGpu:
         attempts = 5  # NOTE: attempts to use the GPU
         for i in range(attempts):
             cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
-            logger.info(f'CUDA_VISIBLE_DEVICES: {cuda_visible_devices} max_devices: {max_devices}')
             if cuda_visible_devices:  # Using CUDA_VISIBLE_DEVICES to set the cuda devices (if present)
+                logger.info(f'Using CUDA_VISIBLE_DEVICES: {cuda_visible_devices}')
                 self.cuda_devices = [int(d) for d in cuda_visible_devices.split(",")]
-                self.cuda_devices = self.cuda_devices[:cp.cuda.runtime.getDeviceCount()]
+                # NOTE: Removing the environment variable to avoid CuPy from caching
+                # REF: https://stackoverflow.com/a/69357360/1767726
+                del os.environ['CUDA_VISIBLE_DEVICES'] 
+                #self.cuda_devices = [d for d in range(cp.cuda.runtime.getDeviceCount())]
+                #self.cuda_devices = visible_devices
             else:   # GPUtil uses nvidia-smi to set the available cuda devices
                 self.cuda_devices = GPUtil.getAvailable(order='first', limit=max_devices, maxLoad=0.5, maxMemory=0.5)
             self.num_devices = len(self.cuda_devices)
