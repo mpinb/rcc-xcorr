@@ -9,11 +9,15 @@ import re
 import numpy as np
 
 from rcc_xcorr.xcorr import BatchXCorr
-from rcc_xcorr.xcorr import XCorrUtil as xcu
 
-#export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-#export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
+try:
+    dict(globals())['export_xcorr_comps_path']
+except KeyError:
+    #export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+    export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+    #export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
+
+print(f'[BATCH_XCORR] export_xcorr_comps_path: {export_xcorr_comps_path}')
 
 normalize_inputs = False
 group_correlations = True
