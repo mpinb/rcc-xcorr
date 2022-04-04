@@ -62,15 +62,16 @@ class XCorrGpu:
         self.cache_correlation = cache_correlation
         attempts = 5  # NOTE: attempts to use the GPU
         for i in range(attempts):
+            # NOTE: After reading the CUDA_VISIBLE_DEVICES environment variable we need to remove it.
+            #       Otherwise CuPy caches it internally and ignores when the variable is changed after.
+            # REF: https://stackoverflow.com/a/69357360/1767726
             cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
+            del os.environ['CUDA_VISIBLE_DEVICES'] 
             if cuda_visible_devices:  # Using CUDA_VISIBLE_DEVICES to set the cuda devices (if present)
                 logger.info(f'Using CUDA_VISIBLE_DEVICES: {cuda_visible_devices}')
-                self.cuda_devices = [int(d) for d in cuda_visible_devices.split(",")]
-                # NOTE: Removing the environment variable to avoid CuPy from caching
-                # REF: https://stackoverflow.com/a/69357360/1767726
-                del os.environ['CUDA_VISIBLE_DEVICES'] 
-                #self.cuda_devices = [d for d in range(cp.cuda.runtime.getDeviceCount())]
-                #self.cuda_devices = visible_devices
+                visible_devices = [int(d) for d in cuda_visible_devices.split(",")]
+                self.cuda_devices = [d for d in range(cp.cuda.runtime.getDeviceCount())]
+                self.cuda_devices = [d for d in self.cuda_devices if d in visible_devices]
             else:   # GPUtil uses nvidia-smi to set the available cuda devices
                 self.cuda_devices = GPUtil.getAvailable(order='first', limit=max_devices, maxLoad=0.5, maxMemory=0.5)
             self.num_devices = len(self.cuda_devices)
@@ -94,8 +95,10 @@ class XCorrGpu:
 
     def cleanup(self):
         # free allocated memory
-        mempool = cp.get_default_memory_pool()
-        mempool.free_all_blocks()
+        for cuda_device in self.cuda_devices:
+            with cp.cuda.Device(cuda_device):
+                cp.get_default_memory_pool().free_all_blocks()
+                cp.get_default_pinned_memory_pool().free_all_blocks()
 
     # Return the previously computed correlation
     # if the cache_correlation flag is True
@@ -283,21 +286,17 @@ class XCorrGpu:
             xcorr_peak = cp.argmax(norm_xcorr)
             y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
 
+            # Move results from GPU to CPU registers
             # xcorr_peak_out = norm_xcorr[y, x].get()
             # y_out = y.get() + cropy
             # x_out = x.get() + cropx
-            #
-            # # Free memory
-            # del norm_xcorr
-            # del image_gpu
-            # del template_gpu
+            
+            # clearing fft plan cache
+            cp.fft.config.get_plan_cache().clear()
 
             #logger.debug(
             #    f'[PID: {os.getpid()}] y_out: {y_out}, x_out: {x_out}, xcorr_peak_out: {xcorr_peak_out}')
-            #return y_out, x_out, xcorr_peak_out
-
-            # clearing fft plan cache
-            cp.fft.config.get_plan_cache().clear()
+            # return y_out, x_out, xcorr_peak_out
 
             return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
 
