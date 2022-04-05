@@ -62,23 +62,19 @@ class XCorrGpu:
         self.cache_correlation = cache_correlation
         attempts = 5  # NOTE: attempts to use the GPU
         for i in range(attempts):
-            # NOTE: After reading the CUDA_VISIBLE_DEVICES environment variable we need to remove it.
-            #       Otherwise CuPy caches it internally and ignores when the variable is changed after.
-            # REF: https://stackoverflow.com/a/69357360/1767726
             cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
-            del os.environ['CUDA_VISIBLE_DEVICES'] 
             if cuda_visible_devices:  # Using CUDA_VISIBLE_DEVICES to set the cuda devices (if present)
                 logger.info(f'Using CUDA_VISIBLE_DEVICES: {cuda_visible_devices}')
                 visible_devices = [int(d) for d in cuda_visible_devices.split(",")]
                 self.cuda_devices = [d for d in range(cp.cuda.runtime.getDeviceCount())]
-                self.cuda_devices = [d for d in self.cuda_devices if d in visible_devices]
             else:   # GPUtil uses nvidia-smi to set the available cuda devices
                 self.cuda_devices = GPUtil.getAvailable(order='first', limit=max_devices, maxLoad=0.5, maxMemory=0.5)
+                visible_devices = self.cuda_devices
             self.num_devices = len(self.cuda_devices)
             if self.num_devices:
-                logger.info(f'[PID: {os.getpid()}] Using {self.num_devices} CUDA device(s): {self.cuda_devices} ')
+                logger.info(f'[PID: {os.getpid()}] Using {self.num_devices} CUDA device(s): {visible_devices} ')
                 gpus = GPUtil.getGPUs()
-                gpus = [gpus[g] for g in self.cuda_devices]
+                gpus = [gpus[g] for g in visible_devices]
                 for gpu in gpus:
                     logger.info(f'[PID: {os.getpid()}] GPU: {gpu.id}, Available memory: {gpu.memoryFree} MB')
                 break

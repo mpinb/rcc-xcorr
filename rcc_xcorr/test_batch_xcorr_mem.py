@@ -1,6 +1,5 @@
 # validate cross correlations for a single set of mfov comparisons
 #   as dumped from mfov using the export_xcorr_comps_path hack.
-import random
 import time
 import tifffile
 import dill
@@ -12,8 +11,8 @@ import numpy as np
 from xcorr import BatchXCorr
 
 #export_xcorr_comps_path = '/gpfs/soma_fs/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-#export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
-export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
+export_xcorr_comps_path = '/gpfs/soma_local/cne/watkins/xcorr_dump_macaque_w2_s1513_mfov29'
+#export_xcorr_comps_path = '/gpfs/soma_fs/scratch/valerio/xcorr_dump_macaque_w2_s1513_mfov29'
 
 print(f'[BATCH_XCORR] export_xcorr_comps_path: {export_xcorr_comps_path}')
 
@@ -66,7 +65,7 @@ print(f'[BATCH_XCORR] Total read templates: {len(templates)}')
 
 print(f'Testing rcc-xcorr batch mode.')
 start_time = time.time()
-sample_correlations = 400
+sample_correlations = 200
 #sample_correlations = len(correlations)
 #nrepeats = 70
 nrepeats = 10
@@ -82,7 +81,7 @@ for i in range(nrepeats):
     # To test with one device only
     num_devices = 1
     os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(random.randint(0,3))
+    os.environ['CUDA_VISIBLE_DEVICES'] = "0"
     
     batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:sample_correlations],
                                                use_gpu=use_gpu, group_correlations=group_correlations,
