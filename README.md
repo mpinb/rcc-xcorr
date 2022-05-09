@@ -98,8 +98,13 @@ print(f'[BATCH_XCORR] {batch_correlations.description()}')
 coords, peaks = batch_correlations.execute_batch() 
 ````
 
-***Note:*** The order in which the **correlations** appear in the array is the same order in which 
+***Note 1:*** The order in which the **correlations** appear in the array is the same order in which 
 the correlation results are returned to the calling program.
+
+***Note 2:*** The image coordinates (`coords`) of the correlation `peaks` are returned as  `(y, x)` pairs. 
+The order follows the in memory representation of the `xcorr` image. The row-major ordering is C memory
+representation obtained from [unravel_index](https://numpy.org/doc/stable/reference/generated/numpy.unravel_index.html).
+
 
 The program assumes all given `image_id` and `template_id` are valid indices inside the `images`/`templates` array.
 
