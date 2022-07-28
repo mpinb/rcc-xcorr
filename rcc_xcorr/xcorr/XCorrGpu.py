@@ -66,7 +66,7 @@ class XCorrGpu:
         for i in range(attempts):
             cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
             if cuda_visible_devices:  # Using CUDA_VISIBLE_DEVICES to set the cuda devices (if present)
-                logger.info(f'Using CUDA_VISIBLE_DEVICES: {cuda_visible_devices}')
+                logger.debug(f'Using CUDA_VISIBLE_DEVICES: {cuda_visible_devices}')
                 visible_devices = [int(d) for d in cuda_visible_devices.split(",")]
                 self.cuda_devices = [d for d in range(cp.cuda.runtime.getDeviceCount())]
             else:   # GPUtil uses nvidia-smi to set the available cuda devices
@@ -74,7 +74,7 @@ class XCorrGpu:
                 visible_devices = self.cuda_devices
             self.num_devices = len(self.cuda_devices)
             if self.num_devices:
-                logger.info(f'[PID: {os.getpid()}] Using {self.num_devices} CUDA device(s): {visible_devices} ')
+                logger.debug(f'[PID: {os.getpid()}] Using {self.num_devices} CUDA device(s): {visible_devices} ')
                 gpus = GPUtil.getGPUs()
                 gpus = [gpus[g] for g in visible_devices]
                 for gpu in gpus:
@@ -291,7 +291,7 @@ class XCorrGpu:
         return norm_xcorr_list
 
     # fast normalized cross-correlation
-    @nvtx.annotate('match_template', color="magenta")
+    @nvtx.annotate('match_template()', color="magenta")
     def match_template(self, image, template, correlation_num=1):
 
         # using correlation_number to assign cuda device (round robin)
@@ -345,7 +345,7 @@ class XCorrGpu:
 
 
     # fast normalized cross-correlation
-    @nvtx.annotate('match_template_array', color="magenta")
+    @nvtx.annotate('match_template_array()', color="magenta")
     def match_template_array(self, image, template_list, corr_list, corr_list_num=1):
         # using correlation_list_number to assign cuda device (round robin)
         cuda_device = self.cuda_devices[corr_list_num % self.num_devices]

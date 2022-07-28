@@ -1,4 +1,5 @@
 import os
+import nvtx
 import logging
 import numpy as np
 from tqdm.auto import tqdm
@@ -128,6 +129,7 @@ class BatchXCorr:
 
         return coords, peaks
 
+    @nvtx.annotate("perform_correlations()", color="green")
     def __perform_correlations(self, xcorr):
 
         futures = []
@@ -160,6 +162,7 @@ class BatchXCorr:
 
         return batch_results_coord, batch_results_peak
 
+    @nvtx.annotate("perform_group_correlations()", color="green")
     def __perform_group_correlations(self, xcorr):
 
         # NOTE: sorting correlations optimize copies of data to gpu
