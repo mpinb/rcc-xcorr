@@ -5,10 +5,8 @@ from tqdm.auto import tqdm
 import concurrent.futures as cf
 
 from .XCorrCpu import XCorrCpu
-try:
-    from .XCorrGpu import XCorrGpu
-except ImportError as ie:
-    XCorrGpu = None
+from .XCorrGpu import XCorrGpu
+from .XCorrCpuFFTW import XCorrCpuFFTW
 
 # Setting the logger
 from .TqdmLoggingHandler import TqdmLoggingHandler
@@ -24,6 +22,15 @@ except ImportError as ie:
     cupy_available = False
 else:
     cupy_available = True
+
+# Testing if pyfftw is available on the system
+try:
+    import pyfftw
+except ImportError as ie:
+    logger.warn(f"Error importing pyfftw package. {ie}")
+    pyfftw_available = False
+else:
+    pyfftw_available = True
 
 
 # The index_correlations method prepends a correlation list
@@ -69,7 +76,8 @@ class BatchXCorr:
                  num_workers=4,
                  override_eps=False,
                  custom_eps=1e-6,
-                 disable_pbar=False
+                 disable_pbar=False,
+                 use_fftw=True
                  ):
         self.images = images
         self.templates = templates
@@ -83,9 +91,13 @@ class BatchXCorr:
         self.override_eps = override_eps
         self.custom_eps = custom_eps
         self.disable_pbar = disable_pbar
+        self.use_fftw = use_fftw
         # Raising an error for the case the use_gpu flag is set but CuPy import failed
         if use_gpu and not cupy_available:
             raise RuntimeError("GPU support is missing. Please launch BatchXCorr with use_gpu flag set to False.")
+        # Raising an error for the case the use_fftw flag is set but PyFFTW import failed
+        if use_fftw and not pyfftw_available:
+            raise RuntimeError("FFTW dependency is missing. Please launch BatchXCorr with use_fftw flag set to False.")
 
     # BatchXCorr info
     def description(self):
@@ -98,19 +110,21 @@ class BatchXCorr:
                              override_eps=self.override_eps,
                              custom_eps=self.custom_eps,
                              max_devices=self.num_gpus)
+        elif self.use_fftw:
+            xcorr = XCorrCpuFFTW(normalize_input=self.normalize_input,
+                                crop_output=self.crop_output,
+                                override_eps=self.override_eps,
+                                custom_eps=self.custom_eps)
         else:
             xcorr = XCorrCpu(normalize_input=self.normalize_input,
-                             crop_output=self.crop_output,
-                             override_eps=self.override_eps,
-                             custom_eps=self.custom_eps)
+                                crop_output=self.crop_output,
+                                override_eps=self.override_eps,
+                                custom_eps=self.custom_eps)
 
         if self.group_correlations:
             coords, peaks = self.__perform_group_correlations(xcorr)
         else:
             coords, peaks = self.__perform_correlations(xcorr)
-
-        # cleanup memory
-        xcorr.cleanup()
 
         return coords, peaks
 
@@ -118,12 +132,18 @@ class BatchXCorr:
 
         futures = []
         with tqdm(total=len(self.correlations), delay=1, disable=self.disable_pbar) as progress:
-            with cf.ThreadPoolExecutor(max_workers=self.num_workers) as pool:
+            with cf.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
                 for corr_num, correlation in enumerate(self.correlations):
                     image_id, templ_id = correlation
-                    future = pool.submit(xcorr.match_template, self.images[image_id], self.templates[templ_id], corr_num)
+                    future = executor.submit(xcorr.match_template, self.images[image_id], self.templates[templ_id], corr_num)
                     future.add_done_callback(lambda p: progress.update(1))
                     futures.append(future)
+
+                # waiting for all tasks to complete (before cleaning fft cache)
+                done, not_done = cf.wait(futures, return_when=cf.ALL_COMPLETED)
+
+                # cleanup the fft plan cache (plans are cached per device and thread)
+                executor.map(xcorr.cleanup, range(self.num_workers))
 
         # The results of correlations are kept in a numpy array internally
         batch_results_coord = np.empty((0, 2), int)
@@ -149,7 +169,7 @@ class BatchXCorr:
 
         futures = []
         with tqdm(total=len(grouped_correlations), delay=1, disable=self.disable_pbar) as progress:
-            with cf.ThreadPoolExecutor(max_workers=self.num_workers) as pool:
+            with cf.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
                 for corr_list_num, correlation_group in enumerate(grouped_correlations):
                     corr_id_array, image_id_array, templ_id_array = np.split(correlation_group, 3, axis=1)
                     correlations_list = np.array(corr_id_array).flatten()
@@ -160,10 +180,16 @@ class BatchXCorr:
                     group_image = self.images[group_image_id]
                     #Loading templates
                     templates_list = [self.templates[templ_id] for templ_id in templ_ids]
-                    future = pool.submit(xcorr.match_template_array,
-                                         group_image, templates_list, correlations_list, corr_list_num)
+                    future = executor.submit(xcorr.match_template_array,
+                                            group_image, templates_list, correlations_list, corr_list_num)
                     future.add_done_callback(lambda p: progress.update(1))
                     futures.append(future)
+
+                # waiting for all tasks to complete (before cleaning fft cache)
+                done, not_done = cf.wait(futures, return_when=cf.ALL_COMPLETED)
+
+                # cleanup the fft plan cache (plans are cached per device and thread)
+                executor.map(xcorr.cleanup, range(self.num_workers))
 
         # The results of correlations are kept in a numpy array internally
         batch_results_coord = np.empty((0, 3), int)

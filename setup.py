@@ -3,9 +3,12 @@ from setuptools import setup, find_packages
 with open('README.md', 'r') as fh:
     long_description = fh.read()
 
+# Read install requirements from requirements.txt
+REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
+
 setup(
     name='rcc-xcorr',  # the name used for pip install
-    version='1.0.11',
+    version='1.0.12',
     description='Perform template matching using fast normalized cross-correlation.',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -15,11 +18,7 @@ setup(
               'rcc_xcorr.xcorr'],
     #package_dir={'': 'src'},
     python_requires=">=3.8",
-    requires=[
-        'numpy',
-        'scipy',
-        'tqdm',
-    ],
+    install_requires=REQUIREMENTS,
     extras_require={
         'with-gpu': ['cupy-cuda115', 'GPUtil'],
         # optional libraries used by the test and benchmarking scripts

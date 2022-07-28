@@ -50,13 +50,13 @@ python -m pip install -U setuptools pip
 By default, the `rcc-xcorr` tool is installed without GPU support using:
 
 ```bash
-python -m pip install git+https://github.com/research-center-caesar/rcc-xcorr.git
+python -m pip install -e git+https://github.com/research-center-caesar/rcc-xcorr.git
 ```
 
 In order to use the `rcc-xcorr` tool with GPU acceleration, the optional dependencies have to be installed too:
 
 ```bash
-python -m pip install git+https://github.com/research-center-caesar/rcc-xcorr.git#egg=rcc-xcorr[with-gpu]
+python -m pip install -e git+https://github.com/research-center-caesar/rcc-xcorr.git#egg=rcc-xcorr[with-gpu]
 ```
 
 ***Note:***  Read this [post](https://adamj.eu/tech/2019/03/11/pip-install-from-a-git-repository/) to understand 

@@ -1,10 +1,15 @@
 import os
 import math
+import pyfftw
+import scipy
 import logging
 
+pyfftw.config.NUM_THREADS = 8
+pyfftw.config.PLANNER_EFFORT = 'FFTW_MEASURE'
+
 import numpy as np
-import scipy
 from scipy.signal import fftconvolve
+
 
 from .TqdmLoggingHandler import TqdmLoggingHandler
 logger = logging.getLogger(__name__)
@@ -40,7 +45,7 @@ def _window_sum(image, window_shape):
 
 # no preprocessing (mean subtraction , std dev.) (raw)
 # full alignment for the 3D alignment only edges overlap (mode = 'full')
-class XCorrCpu:
+class XCorrCpuFFTW:
 
     def __init__(self,
                  normalize_input=False,
@@ -54,7 +59,13 @@ class XCorrCpu:
         self.custom_eps = custom_eps
         self.normalize_input = normalize_input
         self.cache_correlation = cache_correlation
-        logger.debug(f"[PID: {os.getpid()}] XCorrCPU scipy.version: {scipy.__version__}")
+        logger.debug(f"[PID: {os.getpid()}] XCorrFFTW pyfftw.version: {pyfftw.__version__}")
+        logger.debug(f"[PID: {os.getpid()}] XCorrFFTW pyfftw.num_threads: {pyfftw.config.NUM_THREADS}")
+        logger.debug(f"[PID: {os.getpid()}] XCorrFFTW pyfftw.planner_effort: {pyfftw.config.PLANNER_EFFORT}")
+        # Use the backend pyfftw.interfaces.scipy_fft
+        scipy.fft.set_backend(pyfftw.interfaces.scipy_fft)
+        # Enable cache for optimum performance
+        pyfftw.interfaces.cache.enable()
 
     # XCorrCpu info
     def description(self):
