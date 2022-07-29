@@ -1,4 +1,3 @@
-from threading import current_thread
 import nvtx
 import math
 import os
@@ -196,21 +195,15 @@ class XCorrGpu:
             cp.maximum(denominator, 0, out=denominator)  # sqrt of negative number not allowed
             cp.sqrt(denominator, out=denominator)
 
-        # # Compute response #1
-        # with nvtx.annotate("compute response #1", color="cyan"):
-        #     response = cp.zeros_like(xcorr, dtype=float_dtype)
-        #     mask = denominator > small_value # avoid zero-division
-        #     response[mask] = numerator[mask] / denominator[mask]
+        # Compute response
+        with nvtx.annotate("compute response", color="yellow"):
+            response = cp.zeros_like(xcorr, dtype=float_dtype)
+            cp.divide(numerator, denominator, out=response)
+            cp.putmask(response, small_value > denominator, 0)
+            #cp.putmask(response, cp.isinf(response), 0)
+            #cp.putmask(response, cp.isnan(response), 0)
 
-        # Compute response #2
-        with nvtx.annotate("compute response #2", color="yellow"):
-            response2 = cp.zeros_like(xcorr, dtype=float_dtype)
-            cp.divide(numerator, denominator, out=response2)
-            #cp.putmask(response2, small_value > denominator, 0)
-            #cp.putmask(response2, cp.isinf(response2), 0)
-
-        #return response
-        return response2
+        return response
 
     @nvtx.annotate("norm_xcorr_array()", color="green")
     def norm_xcorr_array(self, image, template_array, mode='constant', constant_values=0):
@@ -273,20 +266,12 @@ class XCorrGpu:
         # Computing the output (normalized fast cross correlation)
         norm_xcorr_list = [cp.zeros_like(xcorr, dtype=float_dtype) for xcorr in xcorr_list]
 
-        # # avoid zero-division
-        # mask_list = [denominator > small_value for denominator in denominator_list]
-
-        # for indx in range(template_array_size):
-        #     mask = mask_list[indx]
-        #     numerator = numerator_list[indx]
-        #     denominator = denominator_list[indx]
-        #     (norm_xcorr_list[indx])[mask] = numerator[mask] / denominator[mask]
-
         # Computing the response
         for indx in range(template_array_size):
             numerator = numerator_list[indx]
             denominator = denominator_list[indx]
             cp.divide(numerator, denominator, out=norm_xcorr_list[indx])
+            cp.putmask(norm_xcorr_list[indx], small_value > denominator, 0)
 
         return norm_xcorr_list
 
@@ -315,9 +300,6 @@ class XCorrGpu:
             #logger.info(f'[XCorrGpu(PID: {os.getpid()}, TID: {current_thread().name})] show plan cache info.')
             #cp.fft.config.show_plan_cache_info()
 
-            # clearing fft plan cache
-            # cp.fft.config.get_plan_cache().clear()
-
             # cropping the norm_xcorr
             cropx, cropy = self.crop_output
             origx, origy = norm_xcorr.shape
@@ -330,7 +312,8 @@ class XCorrGpu:
             # finding the peak value inside the norm xcorr (cupy)
             with nvtx.annotate("find max/coords cupy", color="blue"):
                 # NOTE: argmax returns the first occurrence of the maximum value
-                xcorr_peak = cp.argmax(np.where(np.isfinite(norm_xcorr), norm_xcorr, 0))
+                #xcorr_peak = cp.argmax(np.where(np.isfinite(norm_xcorr), norm_xcorr, 0))
+                xcorr_peak = cp.argmax(norm_xcorr)
                 y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
 
             return y.get() + cropy, x.get() + cropx, norm_xcorr[y,x].get()
@@ -382,14 +365,12 @@ class XCorrGpu:
             for indx in range(num_templates):
                 norm_xcorr = norm_xcorr_list[indx]
                 # NOTE: argmax returns the first occurrence of the maximum value
-                xcorr_peak = cp.argmax(np.where(np.isfinite(norm_xcorr), norm_xcorr, 0))
+                #xcorr_peak = cp.argmax(np.where(np.isfinite(norm_xcorr), norm_xcorr, 0))
+                xcorr_peak = cp.argmax(norm_xcorr)
                 y, x = cp.unravel_index(xcorr_peak, norm_xcorr.shape)  # (correlation peak coordinates)
                 match_result_coord = np.array([[corr_list[indx], y.get() + cropy, x.get() + cropx]])
                 match_result_peak = np.array([[corr_list[indx], norm_xcorr[y,x].get()]])
                 match_results_coord = np.append(match_results_coord, match_result_coord, axis=0)
                 match_results_peak = np.append(match_results_peak, match_result_peak, axis=0)
-
-            # clearing fft plan cache
-            # cp.fft.config.get_plan_cache().clear()
 
             return match_results_coord, match_results_peak

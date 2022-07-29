@@ -227,14 +227,16 @@ class BatchXCorr:
         batch_results_coord = np.empty((0, 2), int)
         batch_results_peak = np.empty((0, 1), float)
 
-        with tqdm(total=len(self.correlations), delay=1, disable=self.disable_pbar) as progress:
-            for corr_num, correlation in enumerate(self.correlations):
-                image_id, templ_id = correlation
-                x,y, peak = xcorr.match_template(self.images[image_id], self.templates[templ_id], corr_num)
-                corr_result_coord = np.array([[x, y]])
-                corr_result_peak = np.array([[peak]])
-                batch_results_coord = np.append(batch_results_coord, corr_result_coord, axis=0)
-                batch_results_peak = np.append(batch_results_peak, corr_result_peak, axis=0)
+        for corr_num, correlation in enumerate(tqdm(self.correlations, delay=1, disable=self.disable_pbar)):
+            image_id, templ_id = correlation
+            x,y, peak = xcorr.match_template(self.images[image_id], self.templates[templ_id], corr_num)
+            corr_result_coord = np.array([[x, y]])
+            corr_result_peak = np.array([[peak]])
+            batch_results_coord = np.append(batch_results_coord, corr_result_coord, axis=0)
+            batch_results_peak = np.append(batch_results_peak, corr_result_peak, axis=0)
+            
+        # cleanup memory
+        xcorr.cleanup()
 
         logger.info(f'[PID: {os.getpid()}] {len(self.correlations)} correlations completed. ')
 
@@ -253,21 +255,23 @@ class BatchXCorr:
         batch_results_coord = np.empty((0, 3), int)
         batch_results_peak = np.empty((0, 2), float)
 
-        with tqdm(total=len(grouped_correlations), delay=1, disable=self.disable_pbar) as progress:
-            for corr_list_num, correlation_group in enumerate(grouped_correlations):
-                corr_id_array, image_id_array, templ_id_array = np.split(correlation_group, 3, axis=1)
-                correlations_list = np.array(corr_id_array).flatten()
-                image_ids = np.array(image_id_array).flatten()
-                templ_ids = np.array(templ_id_array).flatten()
-                #Loading group image
-                group_image_id = image_ids[0]
-                group_image = self.images[group_image_id]
-                #Loading templates
-                templates_list = [self.templates[templ_id] for templ_id in templ_ids]
-                group_coords, group_peaks = xcorr.match_template_array(
-                    group_image, templates_list, correlations_list, corr_list_num)
-                batch_results_coord = np.append(batch_results_coord, group_coords, axis=0)
-                batch_results_peak = np.append(batch_results_peak, group_peaks, axis=0)
+        for corr_list_num, correlation_group in enumerate(tqdm(grouped_correlations, delay=1, disable=self.disable_pbar)):
+            corr_id_array, image_id_array, templ_id_array = np.split(correlation_group, 3, axis=1)
+            correlations_list = np.array(corr_id_array).flatten()
+            image_ids = np.array(image_id_array).flatten()
+            templ_ids = np.array(templ_id_array).flatten()
+            #Loading group image
+            group_image_id = image_ids[0]
+            group_image = self.images[group_image_id]
+            #Loading templates
+            templates_list = [self.templates[templ_id] for templ_id in templ_ids]
+            group_coords, group_peaks = xcorr.match_template_array(
+                group_image, templates_list, correlations_list, corr_list_num)
+            batch_results_coord = np.append(batch_results_coord, group_coords, axis=0)
+            batch_results_peak = np.append(batch_results_peak, group_peaks, axis=0)
+            
+        # cleanup memory
+        xcorr.cleanup()
 
         corr_id_col = 0  # sorting batch correlation results by correlation id
         batch_results_coord = batch_results_coord[np.argsort(batch_results_coord[:, corr_id_col])]
