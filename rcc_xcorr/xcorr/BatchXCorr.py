@@ -12,7 +12,7 @@ from .XCorrCpuFFTW import XCorrCpuFFTW
 # Setting the logger
 from .TqdmLoggingHandler import TqdmLoggingHandler
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARN)
 logger.addHandler(TqdmLoggingHandler())
 
 # Testing if cupy is available on the system

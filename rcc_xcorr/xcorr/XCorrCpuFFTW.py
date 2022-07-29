@@ -13,7 +13,7 @@ from scipy.signal import fftconvolve
 
 from .TqdmLoggingHandler import TqdmLoggingHandler
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARN)
 logger.addHandler(TqdmLoggingHandler())
 
 # We thank Eli Horn for providing this code, used with his permission,
@@ -59,9 +59,9 @@ class XCorrCpuFFTW:
         self.custom_eps = custom_eps
         self.normalize_input = normalize_input
         self.cache_correlation = cache_correlation
-        logger.debug(f"[PID: {os.getpid()}] XCorrFFTW pyfftw.version: {pyfftw.__version__}")
-        logger.debug(f"[PID: {os.getpid()}] XCorrFFTW pyfftw.num_threads: {pyfftw.config.NUM_THREADS}")
-        logger.debug(f"[PID: {os.getpid()}] XCorrFFTW pyfftw.planner_effort: {pyfftw.config.PLANNER_EFFORT}")
+        logger.info(f"[PID: {os.getpid()}] XCorrFFTW pyfftw.version: {pyfftw.__version__}")
+        logger.info(f"[PID: {os.getpid()}] XCorrFFTW pyfftw.num_threads: {pyfftw.config.NUM_THREADS}")
+        logger.info(f"[PID: {os.getpid()}] XCorrFFTW pyfftw.planner_effort: {pyfftw.config.PLANNER_EFFORT}")
         # Use the backend pyfftw.interfaces.scipy_fft
         scipy.fft.set_backend(pyfftw.interfaces.scipy_fft)
         # Enable cache for optimum performance

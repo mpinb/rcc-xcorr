@@ -8,7 +8,7 @@ from scipy.signal import fftconvolve
 
 from .TqdmLoggingHandler import TqdmLoggingHandler
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARN)
 logger.addHandler(TqdmLoggingHandler())
 
 # We thank Eli Horn for providing this code, used with his permission,
@@ -54,7 +54,7 @@ class XCorrCpu:
         self.custom_eps = custom_eps
         self.normalize_input = normalize_input
         self.cache_correlation = cache_correlation
-        logger.debug(f"[PID: {os.getpid()}] XCorrCPU scipy.version: {scipy.__version__}")
+        logger.info(f"[PID: {os.getpid()}] XCorrCPU scipy.version: {scipy.__version__}")
 
     # XCorrCpu info
     def description(self):

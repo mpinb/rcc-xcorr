@@ -13,7 +13,7 @@ import cupy as cp
 from cupyx.scipy.signal import fftconvolve
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARN)
 handler = logging.StreamHandler()
 handler.setStream(sys.stdout)
 logger.addHandler(handler)
