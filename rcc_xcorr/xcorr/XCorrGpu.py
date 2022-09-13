@@ -1,9 +1,9 @@
-import nvtx
 import math
 import os
 import sys
 import time
 import logging
+import contextlib
 
 import GPUtil
 
@@ -16,6 +16,27 @@ logger.setLevel(logging.WARN)
 handler = logging.StreamHandler()
 handler.setStream(sys.stdout)
 logger.addHandler(handler)
+
+# Attempting to load nvtx (used for profiler annotations)
+try:
+    import nvtx
+except ImportError as ie:
+    logger.warn(f"Unable to import nvtx library. {ie}")
+    nvtx_available = False
+else:
+    nvtx_available = True
+
+# Conditional annotate code during performance profiling
+# based on the presence of the nvtx annotation library
+def conditional_annotate(nvtx_available, label, color):
+    def decorator(func):
+        ctx = nvtx.annotate(label, color=color) \
+            if nvtx_available else contextlib.suppress()
+        with ctx:
+            result = func
+        return result
+    return decorator
+
 
 # We thank Eli Horn for providing this code, used with his permission,
 # to speed up the calculation of local sums. The algorithm depends on
@@ -145,7 +166,8 @@ class XCorrGpu:
     .. [1] J. P. Lewis, "Fast Normalized Cross-Correlation", Industrial Light
            and Magic.
     """
-    @nvtx.annotate("norm_xcorr()", color="green")
+    ##@nvtx.annotate("norm_xcorr()", color="green")
+    @conditional_annotate(nvtx_available, label="norm_xcorr()", color="green")
     def norm_xcorr(self, image, template, mode='constant', constant_values=0):
         if image.ndim != 2 or template.ndim != 2:
             raise ValueError("Dimensionality of image and/or template should be 2.")
@@ -157,7 +179,10 @@ class XCorrGpu:
         small_value = self.custom_eps if self.override_eps else cp.finfo(float_dtype).eps
 
         # Padding image
-        with nvtx.annotate("padding image", color="blue"):
+        # with nvtx.annotate("padding image", color="blue"):
+        pi_ctx = nvtx.annotate("padding image", color="blue") \
+            if nvtx_available else contextlib.suppress()
+        with pi_ctx:
             pad_width = tuple((width, width) for width in template.shape)
             if mode == 'constant':
                 image = cp.pad(image, pad_width=pad_width, mode=mode,
@@ -166,27 +191,42 @@ class XCorrGpu:
                 image = cp.pad(image, pad_width=pad_width, mode=mode)
 
         # Compute image_window sums (used to normalize the output)
-        with nvtx.annotate("compute window sums", color="yellow"):
+        # with nvtx.annotate("compute window sums", color="yellow"):
+        cws_ctx = nvtx.annotate("compute window sums", color="yellow") \
+            if nvtx_available else contextlib.suppress()
+        with cws_ctx:
             image_window_sum = _window_sum(image, template.shape)
             image_window_sum2 = _window_sum(image ** 2, template.shape)
 
         # Compute template square sum differences
-        with nvtx.annotate("template sq. sum diff.", color="blue"):
+        # with nvtx.annotate("template sq. sum diff.", color="blue"):
+        tssd_ctx = nvtx.annotate("template sq. sum diff.", color="blue") \
+            if nvtx_available else contextlib.suppress()
+        with tssd_ctx:
             template_mean = template.mean()
             template_area = math.prod(template.shape)
             template_ssd = cp.sum((template - template_mean) ** 2)
 
         # Flipping template to make convolution equivalent to cross correlation
-        with nvtx.annotate("fft convolve", color="orange"):
+        # with nvtx.annotate("fft convolve", color="orange"):
+        fft_ctx = nvtx.annotate("fft convolve", color="orange") \
+            if nvtx_available else contextlib.suppress()
+        with fft_ctx:
             xcorr = fftconvolve(image, template[::-1, ::-1],
                                 mode="valid")[1:-1, 1:-1]
 
         # Compute numerator
-        with nvtx.annotate("compute numerator", color="pink"):
+        # with nvtx.annotate("compute numerator", color="pink"):
+        cn_ctx = nvtx.annotate("compute numerator", color="pink") \
+            if nvtx_available else contextlib.suppress()
+        with cn_ctx:
             numerator = xcorr - image_window_sum * template_mean
 
         # Compute denominator
-        with nvtx.annotate("compute denominator", color="brown"):
+        # with nvtx.annotate("compute denominator", color="brown"):
+        cd_ctx = nvtx.annotate("compute denominator", color="brown") \
+            if nvtx_available else contextlib.suppress()
+        with cd_ctx:
             denominator = image_window_sum2
             cp.multiply(image_window_sum, image_window_sum, out=image_window_sum)
             cp.divide(image_window_sum, template_area, out=image_window_sum)
@@ -196,7 +236,10 @@ class XCorrGpu:
             cp.sqrt(denominator, out=denominator)
 
         # Compute response
-        with nvtx.annotate("compute response", color="yellow"):
+        # with nvtx.annotate("compute response", color="yellow"):
+        cr_ctx = nvtx.annotate("compute response", color="yellow") \
+            if nvtx_available else contextlib.suppress()
+        with cr_ctx:
             response = cp.zeros_like(xcorr, dtype=float_dtype)
             cp.divide(numerator, denominator, out=response)
             cp.putmask(response, small_value > denominator, 0)
@@ -205,7 +248,8 @@ class XCorrGpu:
 
         return response
 
-    @nvtx.annotate("norm_xcorr_array()", color="green")
+    ##@nvtx.annotate("norm_xcorr_array()", color="green")
+    @conditional_annotate(nvtx_available, label="norm_xcorr_array()", color="green")
     def norm_xcorr_array(self, image, template_array, mode='constant', constant_values=0):
 
         float_dtype = image.dtype
@@ -276,7 +320,8 @@ class XCorrGpu:
         return norm_xcorr_list
 
     # fast normalized cross-correlation
-    @nvtx.annotate('match_template()', color="magenta")
+    #@nvtx.annotate('match_template()', color="magenta")
+    @conditional_annotate(nvtx_available, label="match_template()", color="magenta")
     def match_template(self, image, template, correlation_num=1):
 
         # using correlation_number to assign cuda device (round robin)
@@ -310,7 +355,10 @@ class XCorrGpu:
                 self.correlation = norm_xcorr
 
             # finding the peak value inside the norm xcorr (cupy)
-            with nvtx.annotate("find max/coords cupy", color="blue"):
+            # with nvtx.annotate("find max/coords cupy", color="blue"):
+            fmc_ctx = nvtx.annotate("find max/coords cupy", color="blue") \
+                if nvtx_available else contextlib.suppress()
+            with fmc_ctx:
                 # NOTE: argmax returns the first occurrence of the maximum value
                 #xcorr_peak = cp.argmax(np.where(np.isfinite(norm_xcorr), norm_xcorr, 0))
                 xcorr_peak = cp.argmax(norm_xcorr)
@@ -328,7 +376,8 @@ class XCorrGpu:
 
 
     # fast normalized cross-correlation
-    @nvtx.annotate('match_template_array()', color="magenta")
+    ##@nvtx.annotate('match_template_array()', color="magenta")
+    @conditional_annotate(nvtx_available, label="match_template_array()", color="magenta")
     def match_template_array(self, image, template_list, corr_list, corr_list_num=1):
         # using correlation_list_number to assign cuda device (round robin)
         cuda_device = self.cuda_devices[corr_list_num % self.num_devices]

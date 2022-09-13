@@ -1,13 +1,24 @@
 # validate cross correlations for the 3d align case.
+import contextlib
 import resource
 import time
 import dill
 import os
-import nvtx
 import cupy
 import numpy as np
 import multiprocessing as mp
 
+# Attempting to load nvtx (used for profiler annotations)
+try:
+    import nvtx
+except ImportError as ie:
+    print(f"[BATCH_XCORR] Unable to import nvtx library. {ie}")
+    nvtx_available = False
+else:
+    print(f"[BATCH_XCORR] Using {nvtx.__package__}")
+    nvtx_available = True
+
+# Importing rcc-xcorr
 from xcorr import BatchXCorr
 from xcorr import XCorrUtil as xcu
 
@@ -102,7 +113,10 @@ batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations[:samp
                                            disable_pbar=disable_pbar)
 print(f'[BATCH_XCORR] {batch_correlations.description()}')
 
-with nvtx.annotate("execute batch correlations"):
+# with nvtx.annotate("execute batch correlations"):
+ebc_ctx = nvtx.annotate("execute batch correlation", color="purple") \
+    if nvtx_available else contextlib.suppress()
+with ebc_ctx:
     result_coords, result_peaks = batch_correlations.execute_batch()
 
 stop_time = time.time()

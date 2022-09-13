@@ -1,6 +1,6 @@
 import os
-import nvtx
 import logging
+import contextlib
 import numpy as np
 from tqdm.auto import tqdm
 import concurrent.futures as cf
@@ -14,6 +14,15 @@ from .TqdmLoggingHandler import TqdmLoggingHandler
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARN)
 logger.addHandler(TqdmLoggingHandler())
+
+# Attempting to load nvtx (used for profiler annotations)
+try:
+    import nvtx
+except ImportError as ie:
+    logger.warn(f"Unable to import nvtx library. {ie}")
+    nvtx_available = False
+else:
+    nvtx_available = True
 
 # Testing if cupy is available on the system
 try:
@@ -32,6 +41,17 @@ except ImportError as ie:
     pyfftw_available = False
 else:
     pyfftw_available = True
+
+# Conditional annotate code during performance profiling
+# based on the presence of the nvtx annotation library
+def conditional_annotate(nvtx_available, label, color):
+    def decorator(func):
+        ctx = nvtx.annotate(label, color=color) \
+            if nvtx_available else contextlib.suppress()
+        with ctx:
+            result = func
+        return result
+    return decorator
 
 
 # The index_correlations method prepends a correlation list
@@ -135,7 +155,8 @@ class BatchXCorr:
 
         return coords, peaks
 
-    @nvtx.annotate("perform_correlations()", color="green")
+    ##@nvtx.annotate("perform_correlations()", color="green")
+    @conditional_annotate(nvtx_available, label="perform_correlations()", color="green")
     def __perform_correlations(self, xcorr):
 
         futures = []
@@ -168,7 +189,8 @@ class BatchXCorr:
 
         return batch_results_coord, batch_results_peak
 
-    @nvtx.annotate("perform_group_correlations()", color="green")
+    ##@nvtx.annotate("perform_group_correlations()", color="green")
+    @conditional_annotate(nvtx_available, label="perform_group_correlations()", color="green")
     def __perform_group_correlations(self, xcorr):
 
         # NOTE: sorting correlations optimize copies of data to gpu
@@ -220,7 +242,8 @@ class BatchXCorr:
 
 
     # perform correlations nt (no threading)
-    @nvtx.annotate("perform_correlations_nt()", color="green")
+    ##@nvtx.annotate("perform_correlations_nt()", color="green")
+    @conditional_annotate(nvtx_available, label="perform_correlations_nt()", color="green")
     def __perform_correlations_nt(self, xcorr):
 
         # The results of correlations are kept in a numpy array internally
@@ -243,7 +266,8 @@ class BatchXCorr:
         return batch_results_coord, batch_results_peak
 
     # perform group correlations nt (no threading)
-    @nvtx.annotate("perform_group_correlations_nt()", color="green")
+    ##@nvtx.annotate("perform_group_correlations_nt()", color="green")
+    @conditional_annotate(nvtx_available, label="perform_group_correlations_nt()", color="green")
     def __perform_group_correlations_nt(self, xcorr):
 
         # NOTE: sorting correlations optimize copies of data to gpu

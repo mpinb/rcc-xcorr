@@ -8,7 +8,7 @@ REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
 
 setup(
     name='rcc-xcorr',  # the name used for pip install
-    version='1.0.12',
+    version='1.0.13',
     description='Perform template matching using fast normalized cross-correlation.',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -22,7 +22,7 @@ setup(
     extras_require={
         'with-gpu': ['cupy-cuda115', 'GPUtil'],
         # optional libraries used by the test and benchmarking scripts
-        'with-test': ['perfplot', 'tifffile', 'dill', 'matplotlib'],
+        'with-test': ['perfplot', 'tifffile', 'dill', 'matplotlib', 'nvtx'],
     },
     url="https://github.com/research-center-caesar/rcc-xcorr.git",
     author="Omar Valerio",
