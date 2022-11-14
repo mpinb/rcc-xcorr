@@ -8,7 +8,7 @@ REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
 
 setup(
     name='rcc-xcorr',  # the name used for pip install
-    version='1.0.13',
+    version='1.0.14',
     description='Perform template matching using fast normalized cross-correlation.',
     long_description=long_description,
     long_description_content_type='text/markdown',

@@ -6,8 +6,6 @@ from tqdm.auto import tqdm
 import concurrent.futures as cf
 
 from .XCorrCpu import XCorrCpu
-from .XCorrGpu import XCorrGpu
-from .XCorrCpuFFTW import XCorrCpuFFTW
 
 # Setting the logger
 from .TqdmLoggingHandler import TqdmLoggingHandler
@@ -24,23 +22,15 @@ except ImportError as ie:
 else:
     nvtx_available = True
 
-# Testing if cupy is available on the system
+# Testing if gpu libraries are present on the environment
 try:
-    import cupy as cp
+    from .XCorrGpu import XCorrGpu
 except ImportError as ie:
-    logger.warn(f"Error importing cupy package. {ie}")
-    cupy_available = False
+    logger.warn(f"Unable to import XCorrGpu due to missing dependencies. {ie}")
+    gpu_available = False
 else:
-    cupy_available = True
+    gpu_available = True
 
-# Testing if pyfftw is available on the system
-try:
-    import pyfftw
-except ImportError as ie:
-    logger.warn(f"Error importing pyfftw package. {ie}")
-    pyfftw_available = False
-else:
-    pyfftw_available = True
 
 # Conditional annotate code during performance profiling
 # based on the presence of the nvtx annotation library
@@ -97,8 +87,7 @@ class BatchXCorr:
                  num_workers=4,
                  override_eps=False,
                  custom_eps=1e-6,
-                 disable_pbar=False,
-                 use_fftw=True
+                 disable_pbar=False
                  ):
         self.images = images
         self.templates = templates
@@ -112,13 +101,9 @@ class BatchXCorr:
         self.override_eps = override_eps
         self.custom_eps = custom_eps
         self.disable_pbar = disable_pbar
-        self.use_fftw = use_fftw
         # Raising an error for the case the use_gpu flag is set but CuPy import failed
-        if use_gpu and not cupy_available:
+        if use_gpu and not gpu_available:
             raise RuntimeError("GPU support is missing. Please launch BatchXCorr with use_gpu flag set to False.")
-        # Raising an error for the case the use_fftw flag is set but PyFFTW import failed
-        if use_fftw and not pyfftw_available:
-            raise RuntimeError("FFTW dependency is missing. Please launch BatchXCorr with use_fftw flag set to False.")
 
     # BatchXCorr info
     def description(self):
@@ -131,11 +116,6 @@ class BatchXCorr:
                              override_eps=self.override_eps,
                              custom_eps=self.custom_eps,
                              max_devices=self.num_gpus)
-        elif self.use_fftw:
-            xcorr = XCorrCpuFFTW(normalize_input=self.normalize_input,
-                                crop_output=self.crop_output,
-                                override_eps=self.override_eps,
-                                custom_eps=self.custom_eps)
         else:
             xcorr = XCorrCpu(normalize_input=self.normalize_input,
                                 crop_output=self.crop_output,

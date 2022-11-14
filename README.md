@@ -50,7 +50,7 @@ python -m pip install -U setuptools pip
 By default, the `rcc-xcorr` tool is installed without GPU support using:
 
 ```bash
-python -m pip install -e git+https://github.com/research-center-caesar/rcc-xcorr.git
+python -m pip install -e git+https://github.com/research-center-caesar/rcc-xcorr.git#egg=rcc-xcorr
 ```
 
 In order to use the `rcc-xcorr` tool with GPU acceleration, the optional dependencies have to be installed too:
@@ -107,6 +107,54 @@ representation obtained from [unravel_index](https://numpy.org/doc/stable/refere
 
 
 The program assumes all given `image_id` and `template_id` are valid indices inside the `images`/`templates` array.
+
+## Numpy FFT Backends
+
+At the core of the cross-correlation module we make use of numpy to compute fft convolution operations. Numpy uses by default 'scipy' to perform fft operations but also supports the use of other fft backends.  The cross-correlation module will make use of the preferred user backend. The following is an example of setting an fft backend.
+
+### Using rcc-xcorr with MKL FFT backend
+````python
+import scipy
+from rcc_xcorr.xcorr import BatchXCorr
+from mkl_fft import _scipy_fft_backend as mkl_fft
+
+images       :  [numpy 2d-array]
+templates    :  [numpy 2d-array]
+correlations : [[0 1]
+                [0 2] 
+                [1 3]
+                [1 2]]
+
+scipy.fft.set_workers(8)
+scipy.fft.set_global_backend(mkl_fft)
+
+batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations,
+                                           crop_output=(0, 0), use_gpu=False,
+                                           num_gpus=num_gpus, group_correlations=True)
+coords, peaks = batch_correlations.execute_batch() 
+````
+
+### Using rcc-xcorr with pyfftw backend
+````python
+import scipy
+from rcc_xcorr.xcorr import BatchXCorr
+from pyfftw import interfaces.scipy_fftpack as pyfftw_fft
+
+images       :  [numpy 2d-array]
+templates    :  [numpy 2d-array]
+correlations : [[0 1]
+                [0 2] 
+                [1 3]
+                [1 2]]
+
+scipy.fft.set_workers(8)
+scipy.fft.set_global_backend(pyfftw_fft)
+
+batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations,
+                                           crop_output=(0, 0), use_gpu=False,
+                                           num_gpus=num_gpus, group_correlations=True)
+coords, peaks = batch_correlations.execute_batch() 
+````
 
 ## Benchmarks
 
