@@ -110,9 +110,14 @@ The program assumes all given `image_id` and `template_id` are valid indices ins
 
 ## Numpy FFT Backends
 
-At the core of the cross-correlation module we make use of numpy to compute fft convolution operations. Numpy uses by default 'scipy' to perform fft operations but also supports the use of other fft backends.  The cross-correlation module will make use of the preferred user backend. The following is an example of setting an fft backend.
+At the core of the cross-correlation module we make use of numpy to compute fft convolution operations. Numpy uses by default 'scipy' to perform fft operations but also supports the use of other fft backends.  The cross-correlation module will make use of the preferred user backend. The fft backend that has the best performance according to our benchmark is Intel's MKL.
 
-### Using rcc-xcorr with MKL FFT backend
+![benchmark CPU fft backends](rcc_xcorr/benchmark_xcorr_cpu_fft_backends.svg)
+
+The following two examples illustrate how to set the fft backend used by `rcc-xcorr` in CPU mode. First example uses `mkl_fft` and second `pyfftw`
+
+### **Using rcc-xcorr with MKL FFT backend**
+
 ````python
 import scipy
 from rcc_xcorr.xcorr import BatchXCorr
@@ -134,7 +139,7 @@ batch_correlations = BatchXCorr.BatchXCorr(images, templates, correlations,
 coords, peaks = batch_correlations.execute_batch() 
 ````
 
-### Using rcc-xcorr with pyfftw backend
+### **Using rcc-xcorr with pyfftw backend**
 ````python
 import scipy
 from rcc_xcorr.xcorr import BatchXCorr
